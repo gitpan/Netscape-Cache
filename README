@@ -6,8 +6,8 @@ Netscape's cache directory.
 This module is inspired by Netscape::History by Neil Bowers and
 Richard Taylor.
 
-You need DB_File to run this module. I got success reports for
-this platforms:
+You need at least perl5.002 and DB_File to run this module. I got success
+reports for these platforms:
 - Linux-2.0.5
 - FreeBSD-2.2.
 

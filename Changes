@@ -1,5 +1,11 @@
 Revision history for Perl extension Netscape::Cache.
 
+0.32
+	- some bug fixes for older perl versions
+
+0.31
+	- support for netscape 4.0 (preferences.js)
+
 0.30
 	- TIEHASH interface
 	- support for Windows Netscape (not tested)
@@ -18,5 +24,3 @@ Revision history for Perl extension Netscape::Cache.
 0.1
 	- original version
 
-Thanks to:
-	Fernando Santagata <lac0658@iperbole.bologna.it>

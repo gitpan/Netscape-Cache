@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.8 1997/04/13 18:19:26 eserte Exp eserte $
+# $Id: Cache.pm,v 1.12 1997/05/28 17:21:19 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright © 1997 Slaven Rezic. All rights reserved.
@@ -63,7 +63,8 @@ There is also an interface for using tied hashes.
 
 package Netscape::Cache;
 use strict;
-use vars qw($Default_Preferences $Default_Cache_Dir $Default_Cache_Index
+use vars qw($Default_Preferences $Default_40_Preferences 
+	    $Default_Cache_Dir $Default_Cache_Index
 	    $Debug $Home $OS_Type $VERSION);
 
 use DB_File;
@@ -75,13 +76,14 @@ if ($^O =~ /^(ms)?(win|dos)/) { # XXX check this one
     $OS_Type = 'win';
 } else {
     $Home = $ENV{'HOME'} || (getpwuid($>))[7];
-    $Default_Preferences = "$Home/.netscape/preferences";
-    $Default_Cache_Dir   = "$Home/.netscape/cache";
-    $Default_Cache_Index = "index.db";
+    $Default_Preferences    = "$Home/.netscape/preferences";
+    $Default_40_Preferences = "$Home/.netscape/preferences.js";
+    $Default_Cache_Dir      = "$Home/.netscape/cache";
+    $Default_Cache_Index    = "index.db";
     $OS_Type = 'unix';
 }
 $Debug = 1;
-$VERSION = '0.30';
+$VERSION = '0.32';
 
 =head1 CONSTRUCTOR
 
@@ -247,7 +249,7 @@ sub delete_object ($$) {
     if (-e $f) {
 	return undef if !unlink $f;
     }
-    delete $self->{CACHE}{$url->{_KEY}};
+    delete $self->{CACHE}{$url->{'_KEY'}};
 }
 
 sub DELETE ($$) {
@@ -286,7 +288,17 @@ sub DESTROY ($) {
 # internal subroutine to get the cache directory from Netscape's preferences
 sub get_cache_dir {
     my $cache_dir;
-    if (open(PREFS, $Default_Preferences)) {
+    if ($Default_40_Preferences && open(PREFS, $Default_40_Preferences)) {
+	# try preferences from netscape 4.0
+	while(<PREFS>) {
+	    if (/user_pref\("browser.cache.directory",\s*"([^\"]+)"\)/) {
+		$cache_dir = $1;
+		last;
+	    }
+	}
+	close PREFS;
+    }
+    if (!$cache_dir && open(PREFS, $Default_Preferences)) {
 	if ($OS_Type eq 'unix') {
 	    while(<PREFS>) {
 		if (/^CACHE_DIR:\s*(.*)$/) {
@@ -294,7 +306,6 @@ sub get_cache_dir {
 		    last;
 		}
 	    }
-	    $cache_dir =~ s|^~/|$Home/|;
 	} elsif ($OS_Type eq 'win') {
 	    my $cache_section_found;
 	    while(<PREFS>) { # read .ini file
@@ -312,6 +323,9 @@ sub get_cache_dir {
 	    }
 	}
 	close PREFS;
+    }
+    if ($OS_Type eq 'unix') {
+	$cache_dir =~ s|^~/|$Home/|;
     }
     $cache_dir;
 }
@@ -403,18 +417,18 @@ sub new ($$;$) {
     bless $self, $pkg;
     $self->{URL} = $url;
 
-    $self->{_KEY} = $key;
+    $self->{'_KEY'} = $key;
 
     my($rest, $len, $last_modified, $expire_date);
-    ($self->{_XXX_FLAG_1},
+    ($self->{'_XXX_FLAG_1'},
      $last_modified, 
      $self->{LAST_VISITED},
      $expire_date,
      $self->{CACHEFILE_SIZE},
-     $self->{_XXX_FLAG_2})      = unpack("l6", substr($value, 4));
+     $self->{'_XXX_FLAG_2'})      = unpack("l6", substr($value, 4));
     ($self->{CACHEFILE}, $rest) = split(/\000/, substr($value, 33), 2);
-    $self->{_XXX_FLAG_3}        = unpack("l", substr($rest, 4, 4));
-    $self->{_XXX_FLAG_4}        = unpack("l", substr($rest, 25, 4));
+    $self->{'_XXX_FLAG_3'}        = unpack("l", substr($rest, 4, 4));
+    $self->{'_XXX_FLAG_4'}        = unpack("l", substr($rest, 25, 4));
     $self->{LAST_MODIFIED}      = $last_modified if $last_modified != 0;
     $self->{EXPIRE_DATE}        = $expire_date if $expire_date != 0;
     
@@ -455,13 +469,13 @@ sub new ($$;$) {
 	warn "Invalid length for value of <$key>\n"
 	  if $record_length != length($value);
 	$self->_report(3, $key, $value)
-	  if $self->{_XXX_FLAG_1} != 3;
+	  if $self->{'_XXX_FLAG_1'} != 3;
 	$self->_report(4, $key, $value)
-	  if $self->{_XXX_FLAG_2} != 0 && $self->{_XXX_FLAG_2} != 1;
+	  if $self->{'_XXX_FLAG_2'} != 0 && $self->{'_XXX_FLAG_2'} != 1;
 	$self->_report(5, $key, $value)
-	  if $self->{_XXX_FLAG_3} != 1;
+	  if $self->{'_XXX_FLAG_3'} != 1;
 	$self->_report(6, $key, $value)
-	  if $self->{_XXX_FLAG_4} != 0 && $self->{_XXX_FLAG_4} != 1;
+	  if $self->{'_XXX_FLAG_4'} != 0 && $self->{'_XXX_FLAG_4'} != 1;
     }
 
     $self;
@@ -478,7 +492,7 @@ sub url ($) {
 
 sub _report {
     my($self, $errno, $key, $value, $addinfo) = @_;
-    if ($self->{_ERROR} && $Debug < 2) {
+    if ($self->{'_ERROR'} && $Debug < 2) {
 	warn "Error number $errno\n";
     } else {
 	warn
@@ -491,7 +505,7 @@ sub _report {
 		      . ($addinfo ? "Additional Info: <$addinfo>\n" : "")
 			. "\n";
     }	
-    $self->{_ERROR}++;
+    $self->{'_ERROR'}++;
 }
 
 sub _make_key_from_url ($) {
@@ -566,6 +580,8 @@ L<Netscape::History>
 =head1 AUTHOR
 
 Slaven Rezic <eserte@cs.tu-berlin.de>
+
+Thanks to: Fernando Santagata <lac0658@iperbole.bologna.it>
 
 =head1 COPYRIGHT
 
