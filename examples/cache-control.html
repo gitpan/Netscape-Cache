@@ -1,7 +1,8 @@
+<!-- check if you have to change path and extension to nscache.cgi -->
 <head><title>cache control</title>
 <base target=cache>
 </head><body>
-<font size=-2 face=helvetica>
+<font size=-2 face=helvetica,arial>
 <form ACTION="nscache.cgi">
 Sort: 
 type<input type=radio name=sort value=type>
@@ -11,11 +12,13 @@ url<input type=radio name=sort value=url checked>|
 Type: 
 images<input type=radio name=type value=image>
 jpeg<input type=radio name=type value="image/jpeg">
+gif<input type=radio name=type value="image/gif">
 text<input type=radio name=type value=text>
 html<input type=radio name=type value="text/html">
 all<input type=radio name=type value="" checked>|
 Direct cache<input type=checkbox name=mycache>|
-<input type=submit>|
+Tree<input type=checkbox name=tree>|
+<input type=submit value="Create list">|
 <a href="nscache.cgi">Fast</a>
 </form>
 </font>

@@ -2,12 +2,11 @@
 # This is -*- perl -*-
 #!/usr/local/bin/suidperl
 
-
 #
-# $Id: nscache,v 1.5 1997/08/19 10:03:15 eserte Exp $
+# $Id: nscache,v 1.6 1997/11/26 20:22:21 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright © 1997 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -20,23 +19,35 @@ use strict;
 
 $| = 1;
 
-
-print "Content-type: text/html\n\n";
-print "<head><title>Cache</title><base target=o></head><body bgcolor=\"#ffffff\">";
-print qq{<font size="-1" face="helvetica">\n};
+print
+  "Content-type: text/html\n\n",
+  "<head><title>Cache</title><base target=o></head><body bgcolor=\"#ffffff\">",
+  qq{<font size="-1" face="helvetica,arial">\n};
 
 # fix $HOME since this script might be run under the uid of the web server
 $ENV{HOME} = (getpwuid($>))[7];
 
+my $indent = 3; # indentation for tree option
+
 my $cache = new Netscape::Cache;
 my @links;
 if ($ENV{QUERY_STRING}) {
-    eval { require CGI::Request };
+    my $req;
+    eval { require CGI };
     if ($@) {
-	print "You need CGI-modules-2.74 or higher to perform this action\n";
-	exit 0;
+	eval { require CGI::Request };
+	if ($@) {
+	    print
+	      "You need CGI.pm (standard in perl5.004)\n",
+	      "or CGI-modules-2.74 to perform this action\n";
+	    exit 0;
+	}
+	else {
+	    $req = new CGI::Request;
+	}
+    } else {
+	$req = new CGI;
     }
-    my $req = new CGI::Request;
     my($o);
     my $type = $req->param('type');
     if ($type) {
@@ -62,15 +73,44 @@ if ($ENV{QUERY_STRING}) {
     }
 
     my $mycache = ($req->param('mycache') eq 'on');
+    my $tree    = ($req->param('tree') eq 'on');
+    if ($tree) { print "<pre>" }
 
+    my @last_component;
     foreach (@links) {
+	my $printed_url;
+	if ($tree) {
+	    # split URL by scheme+host and path components
+	    my @component;
+	    if ($_->{'URL'} =~ m|^([^:]+://[^/]+)/?(.*)|) {
+		@component = ($1, split(m|/|, $2));
+	    } else {
+		@component = ($_->{'URL'});
+	    }
+	    if ($component[0] ne $last_component[0]) { print "<hr>" }
+	    # comparing how many components have changed
+	    my $eq = _equal_components(\@component, \@last_component);
+	    my $i;
+	    foreach $i ($eq+1 .. $#component-1) {
+		print " " x ($indent*$i) . "$component[$i]\n";
+	    }
+	    print " " x ($indent*$#component);
+	    $printed_url = $component[$#component];
+	    @last_component = @component;
+	} else {
+	    $printed_url = $_->{'URL'};
+	}
 	print
 	  "<a href=\"",
 	  ($mycache 
 	   ? "file://$cache->{'CACHEDIR'}$_->{'CACHEFILE'}"
 	   : $_->{'URL'}),
-	     "\">", $_->{'URL'}, "</a><br>\n";
+	     "\">", $printed_url, "</a>";
+        if (!$tree) { print "<br>" }
+        print "\n";
     }
+    
+    if ($tree) { print "</pre>\n" }
 
 } else {
     my($url);
@@ -87,9 +127,11 @@ if ($ENV{QUERY_STRING}) {
 
 print "</font></body>\n";
 
-# automatisches chmod u+s:
-
-### Local Variables:
-### after-save-hook: (lambda () (call-process "chmod" nil 0 nil "ugo+rx,u+s" (buffer-file-name)))
-### vc-checkin-hook: (lambda () (call-process "chmod" nil 0 nil "ugo+rx,u+s" (buffer-file-name)))
-### End:
+sub _equal_components {
+    my($new, $old) = @_;
+    my $i;
+    for($i = 0; $i <= $#$new; $i++) {
+	if ($new->[$i] ne $old->[$i]) { return $i-1 }
+    }
+    $#$new;
+}

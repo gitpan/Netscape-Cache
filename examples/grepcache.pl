@@ -2,10 +2,10 @@
 # -*- perl -*-
 
 #
-# $Id: grepcache.pl,v 1.2 1997/08/19 10:02:52 eserte Exp $
+# $Id: grepcache.pl,v 1.3 1997/11/28 18:47:56 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright © 1997 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #

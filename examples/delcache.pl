@@ -2,10 +2,10 @@
 # -*- perl -*-
 
 #
-# $Id: delcache.pl,v 1.1 1997/10/29 11:15:10 eserte Exp $
+# $Id: delcache.pl,v 1.3 1997/11/28 18:45:55 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright © 1997 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -20,6 +20,8 @@ $c = new Netscape::Cache;
 for($i = 0; $i<=$#ARGV; $i++) {
     if ($ARGV[$i] eq '-i') {
 	$case_insens = 1;
+    } elsif ($ARGV[$i] eq '-q') {
+	$quiet = 1;
     } elsif ($ARGV[$i] =~ /^-/) {
 	die "Wrong argument. Usage: delcache.pl [-i] pattern ...";
     } else {
@@ -47,6 +49,6 @@ while(defined($url = $c->next_url)) {
 }
 
 foreach (@del_list) {
-    print STDERR $_->{'URL'}, "\n";
+    print STDERR $_->{'URL'}, "\n" unless $quiet;
     $c->delete_object($_);
 }

@@ -33,22 +33,29 @@ Example:
 nscache
 -------
 This is an example for a small frame based offline reader. If you have
-CGI::Request from CGI-modules-2.74.tar.gz, you can sort URLs by name,
-date, type and size and restrict display of URLs to images, text or html.
+CGI.pm (standard in perl5.004) or CGI::Request from
+CGI-modules-2.74.tar.gz, you can sort URLs by name, date, type and
+size and restrict display of URLs to images, text or html.
 
 INSTALLATION
 
-nscache is meant to be run as a cgi script. Therefore, you need a httpd
-running on your system. To make the script a cgi script you have
+nscache is meant to be run as a cgi script. Therefore, you need a
+httpd running on your system (If you don't have httpd, you may execute
+"perl nscache > mycache.html" in a shell and load the generated file
+directly from the Navigator). To make the script a cgi script you have
 following options:
 
 * Copy nscache to a public cgi directory. Make sure the path pointing to
-  nscache in cache.html is correct.
+  nscache in cache.html and cache-control.html is correct.
 
 * Append a ".cgi" to nscache. This works for Apache.
 
 * Use the suEXEC feature of Apache 1.2 (see
 .../htdocs/manual/suexec.html of your Apache documentation).
+
+Copy the files cache.html, cache-control.html and blank-page to a
+directory which may be read by your httpd (e.g. ~/public_html, but
+preferably to the same location as the nscache script).
 
 Since ~/.netscape/cache is usually read-only, you have to run the
 script as a setuid program, unless you use the suEXEC feature. So, you
@@ -64,7 +71,22 @@ WARNING
 Running nscache as a cgi script implies that everybody with access to
 your httpd may run this script and use your cache information. If you
 are on a stand-alone system, you won't bother, but otherwise you
-should add .htaccess protection.
+should add .htaccess (or similar) protection.
+
+USAGE
+
+cache.html generates a frameset with three frames. The left frame
+contains the list of the cached documents. The bottom frame is meant
+as a control bar (cache-control.html). You may change the sorting (by
+name, by date ...) or restrict URLs to a given MIME type (html, image
+...). To generate a new list click on the submit button. The largest
+frame contains the actual document.
+
+There are two types for accessing the cached documents: you can access
+the cached files under their real URL. If you want to use this type
+and browse offline via Netscape, you have to set Options->Network
+Preferences->Verify Document to Never. The second type is direct access,
+which accesses the cached files directly from the cache dir.
 
 ----------------------------------------------------------------------
 

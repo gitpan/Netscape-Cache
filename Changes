@@ -1,5 +1,15 @@
 Revision history for Perl extension Netscape::Cache.
 
+0.41	Fri Nov 28 19:47:45 CET 1997
+	- option -index for constructor
+	- better support for dos/win
+	- fixed netscape 4.0 warnings
+	- tree option for nscache 
+
+0.40
+	- fixed endian problem
+	- new methods get_object_by_cachefile and get_url_by_cachefile
+
 0.32
 	- some bug fixes for older perl versions
 

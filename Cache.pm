@@ -1,10 +1,10 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.13 1997/08/19 10:01:12 eserte Exp eserte $
+# $Id: Cache.pm,v 1.18 1997/11/28 18:42:23 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright © 1997 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -46,15 +46,13 @@ The TIEHASH interface:
 
 =head1 DESCRIPTION
 
-The C<Netscape::Cache> module implements an object class for
+The B<Netscape::Cache> module implements an object class for
 accessing the filenames and URLs of the cache files used by the
-Netscape web browser. You can access the cached URLs offline via Netscape
-if you set C<Options-E<gt>Network Preferences-E<gt>Verify Document>
-to C<Never>.
+Netscape web browser.
 
 Note: You can also use the undocumented pseudo-URLs C<about:cache>,
-C<about:memory-cache> and C<about:global-history> to access your cache,
-memory cache and history.
+C<about:memory-cache> and C<about:global-history> to access your disk
+cache, memory cache and global history.
 
 There is also an interface for using tied hashes.
 
@@ -62,35 +60,43 @@ There is also an interface for using tied hashes.
 
 package Netscape::Cache;
 use strict;
-use vars qw($Default_Preferences $Default_40_Preferences 
-	    $Default_Cache_Dir $Default_Cache_Index
+use vars qw($Default_Preferences $Default_40_Preferences @Try_Preferences
+	    $Default_Cache_Dir @Default_Cache_Index
 	    $Debug $Home $OS_Type $VERSION);
 
 use DB_File;
 
-if ($^O =~ /^(ms)?(win|dos)/) { # XXX check this one
+if ($^O =~ /^((ms)?(win|dos)|os2)/i) {
     $Default_Preferences = 'C:\NETSCAPE\NETSCAPE.INI';
+    @Try_Preferences     = qw(D:\NETSCAPE\NETSCAPE.INI
+			      C:\INTERNET\NETSCAPE\NETSCAPE.INI
+			      D:\INTERNET\NETSCAPE\NETSCAPE.INI
+			      C:\PROGRAMS\NETSCAPE\NETSCAPE.INI);
     $Default_Cache_Dir   = 'C:\NETSCAPE\CACHE';
-    $Default_Cache_Index = 'FAT.DB';
+    @Default_Cache_Index = qw(FAT.DB INDEX.DB);
     $OS_Type = 'win';
 } else {
     $Home = $ENV{'HOME'} || (getpwuid($>))[7];
     $Default_Preferences    = "$Home/.netscape/preferences";
+    @Try_Preferences        = ();
     $Default_40_Preferences = "$Home/.netscape/preferences.js";
     $Default_Cache_Dir      = "$Home/.netscape/cache";
-    $Default_Cache_Index    = "index.db";
+    @Default_Cache_Index    = qw(index.db FAT.DB fat.db Fat.db);
     $OS_Type = 'unix';
 }
+
 $Debug = 1;
-$VERSION = '0.40';
+$VERSION = '0.41';
 
 =head1 CONSTRUCTOR
 
     $cache = new Netscape::Cache(-cachedir => "$ENV{HOME}/.netscape/cache");
 
-This creates a new instance of the C<Netscape::Cache> object class. The
+This creates a new instance of the B<Netscape::Cache> object class. The
 I<-cachedir> argument is optional. By default, the cache directory setting
-is retrieved from C<~/.netscape/preferences>.
+is retrieved from C<~/.netscape/preferences>. The index file is normally
+named C<index.db> on Unix systems and C<FAT.DB> on Microsoft systems. It may
+be changed with the I<-index> argument.
 
 If the Netscape cache index file does not exist, a warning message
 will be generated, and the constructor will return C<undef>.
@@ -99,8 +105,16 @@ will be generated, and the constructor will return C<undef>.
 
 sub new ($;%) {
     my($pkg, %a) = @_;
+    my($try, $indexfile);
     my $cachedir = $a{-cachedir} || get_cache_dir() || $Default_Cache_Dir;
-    my $indexfile = "$cachedir/$Default_Cache_Index"; # XXX \ for Windows???
+    if ($a{-index}) {
+	$indexfile = "$cachedir/$a{-index}";
+    } else {
+	foreach $try (@Default_Cache_Index) {	#try all the names
+	    $indexfile = "$cachedir/$try";
+	    last if -f $indexfile;		#exit when we find one
+	}
+    }
     if (-f $indexfile) {
 	my %cache;
 	my $self = {};
@@ -121,7 +135,7 @@ sub TIEHASH ($;@) {
 
 =head1 METHODS
 
-The C<Netscape::Cache> class implements the following methods:
+The B<Netscape::Cache> class implements the following methods:
 
 =over
 
@@ -135,16 +149,16 @@ B<next_url> - get next URL from cache index
 
 =item *
 
-B<next_object> - get next URL as a full B<Netscape::Cache::Object> description
-from cache index
+B<next_object> - get next URL as a full B<Netscape::Cache::Object> from
+cache index
 
 =item *
 
-B<get_object> - get the B<Netscape::Cache::Object> description for a given URL
+B<get_object> - get a B<Netscape::Cache::Object> for a given URL
 
 =back
 
-Each of the methods is described separately below.
+Each of the methods are described separately below.
 
 =head2 next_url
 
@@ -289,12 +303,12 @@ sub DESTROY ($) {
     $o = $cache->get_object_by_cachefile($cachefile);
 
 Finds the corresponding entry for a cache file and returns the object,
-or undef if there is no such $cachefile. This is useful, if you find
+or undef if there is no such C<$cachefile>. This is useful, if you find
 something in your cache directory by using B<grep> and you want to
 know the URL and other attributes of this file.
 
-WARNING: Do not use this method while iterating with get_url, get_object
-or each, because this method does iterating itself and would mess up
+WARNING: Do not use this method while iterating with B<get_url>, B<get_object>
+or B<each>, because this method does iterating itself and would mess up
 the previous iteration.
 
 =cut
@@ -343,31 +357,38 @@ sub get_cache_dir {
 	}
 	close PREFS;
     }
-    if (!$cache_dir && open(PREFS, $Default_Preferences)) {
-	if ($OS_Type eq 'unix') {
-	    while(<PREFS>) {
-		if (/^CACHE_DIR:\s*(.*)$/) {
-		    $cache_dir = $1;
-		    last;
-		}
-	    }
-	} elsif ($OS_Type eq 'win') {
-	    my $cache_section_found;
-	    while(<PREFS>) { # read .ini file
-		if ($cache_section_found) {
-		    if (/^cache dir=(.*)$/i) {
-			($cache_dir = $1) =~ s/\r//g; # strip ^M
-			last;
-		    } elsif (/^\[/) { # new section found
-			undef $cache_section_found;
-			redo; # maybe the new section is a cache section too?
+    if (!$cache_dir) {
+	my $pref;
+      TRY:
+	foreach $pref ($Default_Preferences, @Try_Preferences) {
+	    if (open(PREFS, $pref)) {
+		if ($OS_Type eq 'unix') {
+		    while(<PREFS>) {
+			if (/^CACHE_DIR:\s*(.*)$/) {
+			    $cache_dir = $1;
+			    last;
+			}
 		    }
-		} elsif (/^\[Cache\]/i) { # cache section found
-		    $cache_section_found++;
+		} elsif ($OS_Type eq 'win') {
+		    my $cache_section_found;
+		    while(<PREFS>) { # read .ini file
+			if ($cache_section_found) {
+			    if (/^cache dir=(.*)$/i) {
+				($cache_dir = $1) =~ s/\r//g; # strip ^M
+				last;
+			    } elsif (/^\[/) { # new section found
+				undef $cache_section_found;
+				redo; # maybe the new section is a cache section too?
+			    }
+			} elsif (/^\[Cache\]/i) { # cache section found
+			    $cache_section_found++;
+			}
+		    }
 		}
+		close PREFS;
+		last TRY;
 	    }
 	}
-	close PREFS;
     }
     if ($OS_Type eq 'unix') {
 	$cache_dir =~ s|^~/|$Home/|;
@@ -383,8 +404,8 @@ $Debug = $Netscape::Cache::Debug;
 
 =head1 Netscape::Cache::Object
 
-C<next_object> and C<get_object> return an object of the class
-C<Netscape::Cache::Object>. This object is simply a hash, which members
+B<next_object> and B<get_object> return an object of the class
+B<Netscape::Cache::Object>. This object is simply a hash, which members
 have to be accessed directly (no methods).
 
 An example:
@@ -401,8 +422,8 @@ The URL of the cached object
 =item CACHEFILE
 
 The filename of the cached URL in the cache directory. To construct the full
-path use ($cache is a Netscape::Cache object and $o a Netscape::Cache::Object
-object)
+path use (C<$cache> is a B<Netscape::Cache> object and C<$o> a
+B<Netscape::Cache::Object> object)
 
     $cache->{'CACHEDIR'} . "/" . $o->{'CACHEFILE'}
 
@@ -446,6 +467,12 @@ The encoding of the URL (eg. x-gzip for gzipped data).
 
 The charset of the URL (eg. iso-8859-1).
 
+=item NS_VERSION
+
+The version of Netscape which created this cache file (C<3> for
+Netscape 2.x and 3.x and C<4> for Netscape 4.x) (not sure about this
+one!).
+
 =back
 
 =cut
@@ -465,7 +492,7 @@ sub new ($$;$) {
     $self->{'_KEY'} = $key;
 
     my($rest, $len, $last_modified, $expire_date);
-    ($self->{'_XXX_FLAG_1'},
+    ($self->{NS_VERSION},
      $last_modified, 
      $self->{LAST_VISITED},
      $expire_date,
@@ -513,8 +540,8 @@ sub new ($$;$) {
 	my $record_length = unpack("V", substr($value, 0, 4));
 	warn "Invalid length for value of <$key>\n"
 	  if $record_length != length($value);
-	$self->_report(3, $key, $value)
-	  if $self->{'_XXX_FLAG_1'} != 3;
+#	$self->_report(3, $key, $value)
+#	  if $self->{'_XXX_FLAG_1'} != 3;
 	$self->_report(4, $key, $value)
 	  if $self->{'_XXX_FLAG_2'} != 0 && $self->{'_XXX_FLAG_2'} != 1;
 	$self->_report(5, $key, $value)
@@ -595,21 +622,21 @@ too.
 
 =head1 ENVIRONMENT
 
-The Netscape::Cache module examines the following environment variables:
+The B<Netscape::Cache> module examines the following environment variables:
 
 =over 4
 
 =item HOME
 
 Home directory of the user, used to find Netscape's preferences
-($HOME/.netscape). Otherwise, if not set, retrieve the home directory
+(C<$HOME/.netscape>). Otherwise, if not set, retrieve the home directory
 from the passwd file.
 
 =back
 
 =head1 BUGS
 
-There are still some unknown fields (_XXX_FLAG_{1,2,3}).
+There are still some unknown fields (_XXX_FLAG_{2,3,4}).
 
 You can't use B<delete_object> while looping with B<next_object>. See the
 question "What happens if I add or remove keys from a hash while iterating
