@@ -1,16 +1,15 @@
-#!/usr/local/bin/suidperl
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.12 1997/05/28 17:21:19 eserte Exp $
+# $Id: Cache.pm,v 1.13 1997/08/19 10:01:12 eserte Exp eserte $
 # Author: Slaven Rezic
 #
 # Copyright © 1997 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: <URL:mailto:eserte@cs.tu-berlin.de>
-# WWW:  <URL:http://www.cs.tu-berlin.de/~eserte/>
+# Mail: eserte@cs.tu-berlin.de
+# WWW:  http://user.cs.tu-berlin.de/~eserte/
 #
 
 =head1 NAME
@@ -19,7 +18,7 @@ Netscape::Cache - object class for accessing Netscape cache files
 
 =head1 SYNOPSIS
 
-The object oriented interace:
+The object oriented interface:
 
     use Netscape::Cache;
 
@@ -83,7 +82,7 @@ if ($^O =~ /^(ms)?(win|dos)/) { # XXX check this one
     $OS_Type = 'unix';
 }
 $Debug = 1;
-$VERSION = '0.32';
+$VERSION = '0.40';
 
 =head1 CONSTRUCTOR
 
@@ -238,7 +237,7 @@ Deletes URL from cache index and the related file from the cache.
 
 B<WARNING:> Do not use B<delete_object> while in a B<next_object> loop!
 It is better to collect all objects for delete in a list and do the
-deletion after the loop, otherwise you can get strange behaviour (e.g.
+deletion after the loop, otherwise you can get strange behavior (e.g.
 malloc panics).
 
 =cut
@@ -261,8 +260,8 @@ sub DELETE ($$) {
     $cache->rewind();
 
 This method is used to move the internal pointer of the cache index to
-the first URL in the cache index. You don't need to bother with this
-if you have just created the object, but it doesn't harm anything if
+the first URL in the cache index. You do not need to bother with this
+if you have just created the object, but it does not harm anything if
 you do.
 
 =cut
@@ -283,6 +282,52 @@ sub STORE {
 sub DESTROY ($) {
     my $self = shift;
     untie %{ $self->{CACHE} };
+}
+
+=head2 get_object_by_cachefile
+
+    $o = $cache->get_object_by_cachefile($cachefile);
+
+Finds the corresponding entry for a cache file and returns the object,
+or undef if there is no such $cachefile. This is useful, if you find
+something in your cache directory by using B<grep> and you want to
+know the URL and other attributes of this file.
+
+WARNING: Do not use this method while iterating with get_url, get_object
+or each, because this method does iterating itself and would mess up
+the previous iteration.
+
+=cut
+
+sub get_object_by_cachefile {
+    my($self, $cachefile) = @_;
+    $self->rewind;
+    my $o;
+    while(defined($o = $self->next_object)) {
+	if ($cachefile eq $o->{'CACHEFILE'}) {
+	    return $o;
+	}
+    }
+    undef;
+}
+
+=head2 get_object_by_cachefile
+
+    $url = $cache->get_url_by_cachefile($cachefile);
+
+Finds the corresponding URL for a cache file. This method is implemented
+using B<get_object_by_cachefile>.
+
+=cut
+
+sub get_url_by_cachefile {
+    my($self, $cachefile) = @_;
+    my $o = $self->get_object_by_cachefile($cachefile);
+    if (defined $o) {
+	$o->{'URL'};
+    } else {
+	undef;
+    }
 }
 
 # internal subroutine to get the cache directory from Netscape's preferences
@@ -425,10 +470,10 @@ sub new ($$;$) {
      $self->{LAST_VISITED},
      $expire_date,
      $self->{CACHEFILE_SIZE},
-     $self->{'_XXX_FLAG_2'})      = unpack("l6", substr($value, 4));
+     $self->{'_XXX_FLAG_2'})      = unpack("V6", substr($value, 4));
     ($self->{CACHEFILE}, $rest) = split(/\000/, substr($value, 33), 2);
-    $self->{'_XXX_FLAG_3'}        = unpack("l", substr($rest, 4, 4));
-    $self->{'_XXX_FLAG_4'}        = unpack("l", substr($rest, 25, 4));
+    $self->{'_XXX_FLAG_3'}        = unpack("V", substr($rest, 4, 4));
+    $self->{'_XXX_FLAG_4'}        = unpack("V", substr($rest, 25, 4));
     $self->{LAST_MODIFIED}      = $last_modified if $last_modified != 0;
     $self->{EXPIRE_DATE}        = $expire_date if $expire_date != 0;
     
@@ -441,31 +486,31 @@ sub new ($$;$) {
 	    || substr($rest, 29, 4) =~ /[^\000]/;
     }
     
-    $len = unpack("l", substr($rest, 33, 4));
+    $len = unpack("V", substr($rest, 33, 4));
     if ($len) {
 	$self->{MIME_TYPE} = substr($rest, 37, $len-1);
     }
     $rest = substr($rest, 37 + $len);
     
-    $len = unpack("l", substr($rest, 0, 4));
+    $len = unpack("V", substr($rest, 0, 4));
     if ($len) {
 	$self->{ENCODING} = substr($rest, 4, $len-1);
     }
     $rest = substr($rest, 4 + $len);
     
-    $len = unpack("l", substr($rest, 0, 4));
+    $len = unpack("V", substr($rest, 0, 4));
     if ($len) {
 	$self->{CHARSET} = substr($rest, 4, $len-1);
     }
     $rest = substr($rest, 4 + $len);
     
-    $self->{CONTENT_LENGTH} = unpack("l", substr($rest, 1, 4));
+    $self->{CONTENT_LENGTH} = unpack("V", substr($rest, 1, 4));
     
     if ($Debug) {
 	$self->_report(2, $key, $value)
 	  if substr($rest, 5) =~ /[^\000]/;
 	
-	my $record_length = unpack("l", substr($value, 0, 4));
+	my $record_length = unpack("V", substr($value, 0, 4));
 	warn "Invalid length for value of <$key>\n"
 	  if $record_length != length($value);
 	$self->_report(3, $key, $value)
@@ -483,8 +528,8 @@ sub new ($$;$) {
 
 sub url ($) {
     my $key = shift;
-    my $keylen2 = unpack("l", substr($key, 4, 4));
-    my $keylen1 = unpack("l", substr($key, 0, 4));
+    my $keylen2 = unpack("V", substr($key, 4, 4));
+    my $keylen1 = unpack("V", substr($key, 0, 4));
     if ($keylen1 == $keylen2 + 12) {
 	substr($key, 8, $keylen2-1);
     } # else probably one of INT_CACHESIZE etc. 
@@ -510,14 +555,14 @@ sub _report {
 
 sub _make_key_from_url ($) {
     my $url = shift;
-    pack("l", length($url)+13) . pack("l", length($url)+1)
+    pack("V", length($url)+13) . pack("V", length($url)+1)
       . $url . ("\000" x 5);
 }
 
 =head1 AN EXAMPLE PROGRAM
 
 This program loops through all cache objects and prints a HTML-ified list.
-The list ist sorted by URL, but you can sort it by last visit date or size,
+The list is sorted by URL, but you can sort it by last visit date or size,
 too.
 
     use Netscape::Cache;

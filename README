@@ -1,7 +1,8 @@
 Netscape::Cache Module
 
 Netscape::Cache provides access to the information stored in index.db of
-Netscape's cache directory.
+Netscape's cache directory. Only Netscape versions 2.x, 3.x and 4.x are
+supported (tell me if you want Netscape-1.x support).
 
 This module is inspired by Netscape::History by Neil Bowers and
 Richard Taylor.
@@ -10,6 +11,7 @@ You need at least perl5.002 and DB_File to run this module. I got success
 reports for these platforms:
 - Linux-2.0.5
 - FreeBSD-2.2.
+- Solaris 2.6
 
 To install, type
 

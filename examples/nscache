@@ -1,10 +1,10 @@
-#!/usr/local/bin/suidperl
-# This is -*- perl -*-
 #!/usr/local/bin/perl
+# This is -*- perl -*-
+#!/usr/local/bin/suidperl
 
 
 #
-# $Id: nscache,v 1.4 1997/03/28 13:01:35 eserte Exp $
+# $Id: nscache,v 1.5 1997/08/19 10:03:15 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright © 1997 Slaven Rezic. All rights reserved.

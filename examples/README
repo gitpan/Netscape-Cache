@@ -1,10 +1,34 @@
 grepcache.pl
 ------------
 Command line tool for searching URLs with perl regular expresions. Returns
-the cache file names of matching URLs.
+the cache file names of matching URLs. With the -r option, you can get
+the correspoding URL for a cache file.
 
 Usage:
-	grepcache.pl URL
+	grepcache.pl [-i] [-r] URLs
+-i: search case insensitive
+-r: reverse search (search for cachefiles)
+
+Examples:
+	$ ./grepcache.pl freebsd
+	http://www.de.freebsd.org/newsflash.html: 01/cache33BAF2210010702.html
+	$ lynx ~/.netscape/cache/01/cache33BAF2210010702.html
+
+	$ ./grepcache.pl -r 01/cache33BAF2210010702.html
+	http://www.de.freebsd.org/newsflash.html: 01/cache33BAF2210010702.html
+
+
+delcache.pl
+-----------
+Delete cache files and their db entries. Matching is done with perl regular
+expressions.
+
+Usage:
+	delcache.pl [-i] URLs
+
+Example:
+	$ ./delcache.pl http://localhost/ http://127.0.0.1
+
 
 nscache
 -------
@@ -26,11 +50,14 @@ following options:
 * Use the suEXEC feature of Apache 1.2 (see
 .../htdocs/manual/suexec.html of your Apache documentation).
 
-Since ~/.netscape/cache is usually read-only, you have to run the script as a
-setuid program, unless you use the suEXEC feature. So, you have to do a
-"chmod u+s nscache.cgi". If you don't have to run the script as a setuid
-program, you have to replace the #!/usr/local/bin/suidperl line in
-nscache with #!/usr/local/bin/perl (or what else your path to perl is).
+Since ~/.netscape/cache is usually read-only, you have to run the
+script as a setuid program, unless you use the suEXEC feature. So, you
+have to do a "chmod u+s nscache.cgi". If you have to run the script as
+a setuid program, you have to replace the line
+		#!/usr/local/bin/perl
+in nscache with
+		#!/usr/local/bin/suidperl
+(or what else your path to perl is).
 
 WARNING
 
