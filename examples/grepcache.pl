@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: grepcache.pl,v 1.5 1998/01/03 14:23:59 eserte Exp $
+# $Id: grepcache.pl,v 1.6 1998/05/06 23:27:12 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -16,11 +16,13 @@
 use Netscape::Cache;
 use Getopt::Std;
 
-$c = new Netscape::Cache;
-
-if (!getopts('irvl')) {
-    die "Usage: grepcache.pl [-ilv] [-r] pattern ...\n";
+if (!getopts('irvld:')) {
+    die "Usage: grepcache.pl [-ilvd] [-r] pattern ...\n";
 }
+
+$cachedir = $opt_d || $ENV{NSCACHE};
+
+$c = new Netscape::Cache (defined $cachedir ? (-cachedir => $cachedir) : ());
 
 $case_insens = $opt_i;
 $reverse     = $opt_r;

@@ -10,7 +10,7 @@ Richard Taylor.
 You need at least perl5.002 and DB_File to run this module. I have success
 reports for these platforms:
 - Linux-2.0.5
-- FreeBSD-2.2
+- FreeBSD-2.2, 2.2.6 and 2.2.8
 - Solaris 2.6
 - MS-DOS/Windows3.1 using the $CPAN/ports/msdos/dosperl.zip port
 

@@ -11,3 +11,5 @@ examples/cache.html
 examples/nscache
 examples/grepcache.pl
 examples/delcache.pl
+examples/nsindex.pl
+examples/mkhier.pl

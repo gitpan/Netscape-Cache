@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.19 1998/02/05 18:45:20 eserte Exp $
+# $Id: Cache.pm,v 1.21.1.3 1999/06/05 00:53:54 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -59,8 +59,9 @@ There is also an interface for using tied hashes.
 Netscape uses the old Berkeley DB format (version 1.85) for its cache
 index C<index.db>. Version 2.x.x is incompatible with the old format
 (L<db_intro(3)>), so you have either to downgrade or to convert the
-database using B<db_dump185> and B<db_load>. See L</convert_185_2xx>
-for a (experimental) converter function.
+database using B<db_dump185> and B<db_load>. See
+L<convert_185_2xx|/convert_185_2xx> for a (experimental) converter
+function.
 
 =cut
 
@@ -71,6 +72,12 @@ use vars qw($Default_Preferences $Default_40_Preferences @Try_Preferences
 	    $Debug $Home $OS_Type $VERSION);
 
 use DB_File;
+
+if (defined $DB_File::db_version and $DB_File::db_version > 1) {
+    warn "Netscape::Cache works only if Berkeley db version 1 is\n" .
+      "installed. Please use the convert_185_2xx function to convert\n" .
+	"the cache index to the new db format (see manpage).\n";
+}
 
 if ($^O =~ /^((ms)?(win|dos)|os2)/i) {
     $Default_Preferences = 'C:\NETSCAPE\NETSCAPE.INI';
@@ -91,8 +98,8 @@ if ($^O =~ /^((ms)?(win|dos)|os2)/i) {
     $OS_Type = 'unix';
 }
 
-$Debug = 1;
-$VERSION = '0.42';
+$Debug = 0;
+$VERSION = '0.44';
 
 =head1 CONSTRUCTOR
 
@@ -133,10 +140,11 @@ sub new ($;%) {
 	}
 	$self->{CACHE}     = \%cache;
 	$self->{CACHEDIR}  = $cachedir;
-	$self->{INDEXFILE} = $indexfile;	
+	$self->{INDEXFILE} = $indexfile;
 	bless $self, $pkg;
     } else {
-	warn "No cache db found!\n";
+	warn "No cache db found. Try to set the cache direcetory with\n" .
+	  "-cachedir and the index file with -index.\n";
         undef;
     }
 }
@@ -430,11 +438,19 @@ Usage example:
 sub convert_185_2xx {
     my($indexfile, $tmploc) = @_;
     my $success = 0;
+    my $tmpdir;
+    foreach (qw(/tmp /temp .)) {
+	if (-d $_ && -w $_) {
+	    $tmpdir = $_;
+	    last;
+	}
+    }
+    die "No /tmp or /temp directory writeable" if !defined $tmpdir;
     die "usage: convert_185_2xx(indexfile [,tmploc])"
       unless defined $indexfile;
-    $tmploc = "/tmp/index.$$.db"
+    $tmploc = "$tmpdir/index.$$.db"
       unless defined $tmploc;
-    my $tmpdump = "/tmp/dump";
+    my $tmpdump = "$tmpdir/dump";
     system("db_dump185 $indexfile > $tmpdump");
     if ($?) { warn $!;
 	      goto CLEANUP }
@@ -472,6 +488,10 @@ An example:
 =item URL
 
 The URL of the cached object
+
+=item COMPLETE_URL
+
+The complete URL with the query string attached (only Netscape 4.x).
 
 =item CACHEFILE
 
@@ -524,8 +544,8 @@ The charset of the URL (eg. iso-8859-1).
 =item NS_VERSION
 
 The version of Netscape which created this cache file (C<3> for
-Netscape 2.x and 3.x and C<4> for Netscape 4.x) (not sure about this
-one!).
+Netscape 2.x and 3.x, C<4> for Netscape 4.0x and C<5> for Netscape
+4.5).
 
 =back
 
@@ -567,11 +587,17 @@ sub new ($$;$) {
 	    || substr($rest, 29, 4) =~ /[^\000]/;
     }
     
-    $len = unpack("V", substr($rest, 33, 4));
-    if ($len) {
-	$self->{MIME_TYPE} = substr($rest, 37, $len-1);
+    my $inx;
+    if ($self->{NS_VERSION} >= 5) {
+	$inx = 21;
+    } else {
+	$inx = 33;
     }
-    $rest = substr($rest, 37 + $len);
+    $len = unpack("V", substr($rest, $inx, 4));
+    if ($len) {
+	$self->{MIME_TYPE} = substr($rest, $inx+4, $len-1);
+    }
+    $rest = substr($rest, $inx+4 + $len);
     
     $len = unpack("V", substr($rest, 0, 4));
     if ($len) {
@@ -586,16 +612,21 @@ sub new ($$;$) {
     $rest = substr($rest, 4 + $len);
     
     $self->{CONTENT_LENGTH} = unpack("V", substr($rest, 1, 4));
-    
+    $rest = substr($rest, 5);
+
+    $len = unpack("V", substr($rest, 0, 4));
+    if ($len) {
+	$self->{COMPLETE_URL} = substr($rest, 4, $len-1);
+    }
+    $rest = substr($rest, 4 + $len);
+
     if ($Debug) {
 	$self->_report(2, $key, $value)
-	  if substr($rest, 5) =~ /[^\000]/;
-	
+	  if $rest =~ /[^\000]/;
+
 	my $record_length = unpack("V", substr($value, 0, 4));
 	warn "Invalid length for value of <$key>\n"
 	  if $record_length != length($value);
-#	$self->_report(3, $key, $value)
-#	  if $self->{'_XXX_FLAG_1'} != 3;
 	$self->_report(4, $key, $value)
 	  if $self->{'_XXX_FLAG_2'} != 0 && $self->{'_XXX_FLAG_2'} != 1;
 	$self->_report(5, $key, $value)
@@ -624,9 +655,9 @@ sub _report {
 	warn
 	  "Please report:\nError number $errno\nURL: "
 	    . $self->{URL} . "\nEncoded URL: <"
-	      . join("", map { sprintf "%2x", ord $_ } split(//, $key))
+	      . join("", map { sprintf "%02x", ord $_ } split(//, $key))
 		. ">\nEncoded Properties: <"
-		  . join("", map { sprintf "%2x", ord $_ } split(//, $value))
+		  . join("", map { sprintf "%02x", ord $_ } split(//, $value))
 		    . ">\n"
 		      . ($addinfo ? "Additional Info: <$addinfo>\n" : "")
 			. "\n";
@@ -673,6 +704,46 @@ too.
 	  ",size: ", $_->{'CACHEFILE_SIZE'}, "\n";
     }
     print "</ul>\n";
+
+=head1 FORMAT OF index.db
+
+Here is a short description of the format of index.db. All integers
+are in VAX byte order (little endian). Time is specified as seconds
+since epoch.
+
+    Key:
+
+    Offset  Type/Length  Description
+
+    0       long         Length of key entry
+    4       long         Length of URL with trailing \0
+    8       string       URL (null-terminated)
+    +0      string       filled with \0
+
+    Value:
+
+    Offset  Type/Length  Description
+
+    0       long         Length of value entry
+    4       long         A version number (see NS_VERSION)
+    8       long         Last modified
+    12      long         Last visited
+    16      long         Expire date
+    20      long         Size of cachefile
+    24      ...          Unknown
+    29      long         Length of cache filename with trailing \0
+    33      string       Cache filename (null-terminated)
+    +0      ...          Unknown
+    +33     long         Length of mime type with trailing \0
+    +37     string       Mime type (null-terminated)
+    +0      long         Length of content encoding with trailing \0
+    +4      string       Content encoding (null-terminated)
+    +0      long         Length of charset with trailing \0
+    +4      string       Charset (null-terminated)
+    +0      ...          Unknown
+    +1      long         Content length
+    +5      long         Length of the complete URL with trailing \0
+    +9      string       Complete URL (null-terminated)
 
 =head1 ENVIRONMENT
 

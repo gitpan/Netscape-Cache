@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: delcache.pl,v 1.5 1998/01/26 00:26:43 eserte Exp $
+# $Id: delcache.pl,v 1.6 1998/05/06 23:27:08 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -15,8 +15,6 @@
 
 use Netscape::Cache;
 
-$c = new Netscape::Cache;
-
 for($i = 0; $i<=$#ARGV; $i++) {
     if ($ARGV[$i] eq '-i') {
 	$case_insens = 1;
@@ -26,14 +24,23 @@ for($i = 0; $i<=$#ARGV; $i++) {
 	$quiet = 1;
     } elsif ($ARGV[$i] eq '-clean') {
 	$clean = 1;
+    } elsif ($ARGV[$i] eq '-cachedir') {
+	$i++;
+	$cachedir = $ARGV[$i];
     } elsif ($ARGV[$i] =~ /^-/) {
 	die "Wrong argument. Usage:
-    delcache.pl [-f] [-i] [-q] pattern ...
-    delcache.pl [-f] [-q] -clean\n";
+    delcache.pl [-d cachedir] [-f] [-i] [-q] pattern ...
+    delcache.pl [-d cachedir] [-f] [-q] -clean\n";
     } else {
 	push(@urlrx, $ARGV[$i]);
     }
 }
+
+if (!defined $cachedir && defined $ENV{NSCACHE}) {
+    $cachedir = $ENV{NSCACHE};
+}
+
+$c = new Netscape::Cache (defined $cachedir ? (-cachedir => $cachedir) : ());
 
 my $lockfile = "$ENV{HOME}/.netscape/lock";
 if (-l $lockfile || -e $lockfile) {

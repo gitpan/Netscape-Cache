@@ -1,5 +1,17 @@
 Revision history for Perl extension Netscape::Cache.
 
+1.00
+	- use fields, hence it works only with perl5.005 (not released)
+
+0.44
+	- cosmetic fixes
+	- added ABSTRACT_FROM and AUTHOR to Makefile.PL
+	- added compatibility fix for Netscape 4.5
+
+0.43
+	- POD: added description of index.db
+	- COMPLETE_URL
+
 0.42	Wed Feb 11 15:35:18 CET 1998
 	- new funtion: convert_185_2xx
 	- option -clean for delcache.pl

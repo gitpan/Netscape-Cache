@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: test.pl,v 1.3 1997/11/28 18:41:01 eserte Exp $
+# $Id: test.pl,v 1.4 1999/06/05 00:53:33 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -19,15 +19,15 @@ use strict;
 
 $^W = 1;
 
-my $cache = new Netscape::Cache;
+my %args;
+if (@ARGV) {
+    $args{-cachedir} = $ARGV[0];
+}
+my $cache = new Netscape::Cache %args;
 if (!$cache) {
     die <<'EOF';
-Please edit test.pl
-Change the line
-    my $cache = new Netscape::Cache;
-to
-    my $cache = new Netscape::Cache(-cachedir => "/path/to/my/cachedir");
-and rerun the test.
+Please start test.pl manually with
+    perl -Mblib test.pl /path/to/my/cachedir
 EOF
 }
 

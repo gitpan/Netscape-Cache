@@ -1,3 +1,16 @@
+README --- examples directory
+-----------------------------
+
+This document describes some example scripts which might be useful when
+dealing with the netscape cache. The scripts are
+
+* grepcache.pl - a grep-like tool for searching content or URL names
+* delcache.pl  - delete files from the cache
+* nscache      - an offline reader for use as a CGI
+* mkhier.pl    - create an URL hierarchie on the filesystem
+* nsindex.pl   - create an cache index file as HTML
+
+
 grepcache.pl
 ------------
 Command line tool for searching URLs with perl regular expresions. Returns
@@ -10,6 +23,7 @@ Usage:
 -l: print the full pathname of found cachefiles
 -v: show more information (content size, last modified time etc.)
 -r: reverse search (search for cachefiles)
+-d cachedir: netscape cache directory (also: environment variable NSCACHE)
 
 Examples:
 	$ ./grepcache.pl freebsd
@@ -22,16 +36,18 @@ Examples:
 	$ ./grepcache.pl -l freebsd
 	/home/e/eserte/.netscape/cache//01/cache33BAF2210010702.html
 
+
 delcache.pl
 -----------
 Delete cache files and their db entries. Matching is done with perl regular
 expressions.
 
 Usage:
-	delcache.pl [-f] [-q] [-i] URLs
+	delcache.pl [-d cachedir] [-f] [-q] [-i] URLs
 -q: quiet
 -i: case insensitive
 -f: force deletion if netscape's lock file exists
+-d cachedir: netscape cache directory (also: environment variable NSCACHE)
 
 Example:
 	$ ./delcache.pl http://localhost/ http://127.0.0.1
@@ -39,6 +55,7 @@ Example:
 Remove index entries without a matching cache file:
 
 	delcache.pl -clean
+
 
 nscache
 -------
@@ -97,6 +114,33 @@ the cached files under their real URL. If you want to use this type
 and browse offline via Netscape, you have to set Options->Network
 Preferences->Verify Document to Never. The second type is direct access,
 which accesses the cached files directly from the cache dir.
+
+
+mkhier.pl
+---------
+Create an URL hierarchie on the filesystem.
+
+Usage:
+	mkhier.pl [-l] [-d cachedir] -dest directory url-regex
+
+-l:        create symbolic links instead of copying files
+-dest:     destination directory (required option)
+-d cachedir: netscape cache directory (also: environment variable NSCACHE)
+url-regex: regular expression for the URLs to be created as files or links
+
+
+nsindex.pl
+----------
+Create an cache index file as HTML.
+
+Usage: nsindex.pl [options] [file ...]
+    -cache XXX          cache directory, e.g. $HOME/.netscape/ns_cache
+    -output XXX         select output (site, date or both)
+    -help               this message
+    -ident              show identification
+    -verbose            verbose information
+
+nsindex.pl is contributed by Johan Vromans <JVromans@VRI.net>.
 
 ----------------------------------------------------------------------
 
