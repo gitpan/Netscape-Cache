@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: delcache.pl,v 1.3 1997/11/28 18:45:55 eserte Exp $
+# $Id: delcache.pl,v 1.5 1998/01/26 00:26:43 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -20,30 +20,62 @@ $c = new Netscape::Cache;
 for($i = 0; $i<=$#ARGV; $i++) {
     if ($ARGV[$i] eq '-i') {
 	$case_insens = 1;
+    } elsif ($ARGV[$i] eq '-f') {
+	$force = 1;
     } elsif ($ARGV[$i] eq '-q') {
 	$quiet = 1;
+    } elsif ($ARGV[$i] eq '-clean') {
+	$clean = 1;
     } elsif ($ARGV[$i] =~ /^-/) {
-	die "Wrong argument. Usage: delcache.pl [-i] pattern ...";
+	die "Wrong argument. Usage:
+    delcache.pl [-f] [-i] [-q] pattern ...
+    delcache.pl [-f] [-q] -clean\n";
     } else {
 	push(@urlrx, $ARGV[$i]);
     }
 }
 
-if (@urlrx == 0) {
-    die "Argument 'url regexp' missing";
+my $lockfile = "$ENV{HOME}/.netscape/lock";
+if (-l $lockfile || -e $lockfile) {
+    print STDERR "Warning, Netscape lock file ($lockfile) detected.";
+    if (!$force) {
+	print STDERR "
+Use the -f switch to force deletion, or close netscape, or make sure that
+there is no running netscape process and delete the lock file.
+";
+	exit 1;
+    } else {
+	print STDERR "\nDeleting anyway.\n";
+    }
 }
- 
-$urlrx = join("|", @urlrx);
-if ($case_insens) {
-    $urlrx = "(?i)$urlrx";
-}
-while(defined($url = $c->next_url)) {
-    if ($url =~ /$urlrx/o) {
-	$o = $c->get_object($url);
-	if (!defined $o) {
-	    warn "Can't get object for <$url>";
-	} else {
+
+if ($clean) {
+
+    while(defined($o = $c->next_object)) {
+	my $file = $c->{CACHEDIR} . "/" . $o->{CACHEFILE};
+	if (! -e $file) {
 	    push(@del_list, $o);
+	}
+    }
+
+} else {
+
+    if (@urlrx == 0) {
+	die "Argument 'url regexp' missing";
+    }
+ 
+    $urlrx = join("|", @urlrx);
+    if ($case_insens) {
+	$urlrx = "(?i)$urlrx";
+    }
+    while(defined($url = $c->next_url)) {
+	if ($url =~ /$urlrx/o) {
+	    $o = $c->get_object($url);
+	    if (!defined $o) {
+		warn "Can't get object for <$url>";
+	    } else {
+		push(@del_list, $o);
+	    }
 	}
     }
 }
@@ -52,3 +84,4 @@ foreach (@del_list) {
     print STDERR $_->{'URL'}, "\n" unless $quiet;
     $c->delete_object($_);
 }
+

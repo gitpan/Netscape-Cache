@@ -1,5 +1,10 @@
 Revision history for Perl extension Netscape::Cache.
 
+0.42	Wed Feb 11 15:35:18 CET 1998
+	- new funtion: convert_185_2xx
+	- option -clean for delcache.pl
+	- warning fixes
+
 0.41	Fri Nov 28 19:47:45 CET 1997
 	- option -index for constructor
 	- better support for dos/win

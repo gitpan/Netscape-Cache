@@ -12,7 +12,10 @@ reports for these platforms:
 - Linux-2.0.5
 - FreeBSD-2.2
 - Solaris 2.6
-- MS-DOS/Windows3.1 using the //CPAN/ports/msdos/dosperl.zip port
+- MS-DOS/Windows3.1 using the $CPAN/ports/msdos/dosperl.zip port
+
+You also need the old Berkeley DB (e.g. 1.85), not the new version
+2.x.x. See the pod documentation for more information about this.
 
 To install, type
 

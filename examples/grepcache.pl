@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: grepcache.pl,v 1.3 1997/11/28 18:47:56 eserte Exp $
+# $Id: grepcache.pl,v 1.5 1998/01/03 14:23:59 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -14,20 +14,20 @@
 #
 
 use Netscape::Cache;
+use Getopt::Std;
 
 $c = new Netscape::Cache;
 
-for($i = 0; $i<=$#ARGV; $i++) {
-    if ($ARGV[$i] eq '-i') {
-	$case_insens = 1;
-    } elsif ($ARGV[$i] eq '-r') {
-	$reverse = 1;
-    } elsif ($ARGV[$i] =~ /^-/) {
-	die "Wrong argument. Usage: grepcache.pl [-i] [-r] pattern ...";
-    } else {
-	push(@urlrx, $ARGV[$i]);
-    }
+if (!getopts('irvl')) {
+    die "Usage: grepcache.pl [-ilv] [-r] pattern ...\n";
 }
+
+$case_insens = $opt_i;
+$reverse     = $opt_r;
+$localfile   = $opt_l;
+$verbose     = $opt_v;
+
+push(@urlrx, @ARGV);
 
 if (@urlrx == 0) {
     die "Argument 'url regexp' missing";
@@ -44,7 +44,29 @@ if (!$reverse) {
 	    if (!defined $o) {
 		warn "Can't get object for <$url>";
 	    } else {
-		print $o->{'URL'} . ": " . $o->{'CACHEFILE'}, "\n";
+		if ($localfile) {
+		    print $c->{CACHEDIR} . "/" . $o->{CACHEFILE} . "\n";
+		} elsif (!$verbose) {
+		    print $o->{'URL'} . ": " . $o->{'CACHEFILE'}, "\n";
+		} else {
+		    print $o->{'URL'} . "\n" .
+		      "\tcachefile:\t$o->{CACHEFILE}\n",
+		      "\tcachefile size:\t$o->{CACHEFILE_SIZE}\n",
+		      "\tcontent length:\t$o->{CONTENT_LENGTH}\n",
+		      "\tlast modified:\t",
+		      ($o->{LAST_MODIFIED} 
+		       ? scalar localtime($o->{LAST_MODIFIED}) : ""), "\n",
+ 		      "\tlast visited:\t",
+		      ($o->{LAST_VISITED}
+		       ? scalar localtime($o->{LAST_VISITED}) : "") . "\n",
+		      "\texpire date:\t",
+		      ($o->{EXPIRE_DATE} ?
+		       scalar localtime($o->{EXPIRE_DATE}) : "") . "\n",
+		      "\tmime type:\t$o->{MIME_TYPE}\n",
+		      "\tencoding:\t$o->{ENCODING}\n",
+		      "\tcharset:\t$o->{CHARSET}\n",
+		      ;
+		}
 	    }
 	}
     }

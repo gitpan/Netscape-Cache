@@ -5,8 +5,10 @@ the cache file names of matching URLs. With the -r option, you can get
 the correspoding URL for a cache file.
 
 Usage:
-	grepcache.pl [-i] [-r] URLs
+	grepcache.pl [-ilv] [-r] URLs
 -i: search case insensitive
+-l: print the full pathname of found cachefiles
+-v: show more information (content size, last modified time etc.)
 -r: reverse search (search for cachefiles)
 
 Examples:
@@ -17,6 +19,8 @@ Examples:
 	$ ./grepcache.pl -r 01/cache33BAF2210010702.html
 	http://www.de.freebsd.org/newsflash.html: 01/cache33BAF2210010702.html
 
+	$ ./grepcache.pl -l freebsd
+	/home/e/eserte/.netscape/cache//01/cache33BAF2210010702.html
 
 delcache.pl
 -----------
@@ -24,11 +28,17 @@ Delete cache files and their db entries. Matching is done with perl regular
 expressions.
 
 Usage:
-	delcache.pl [-i] URLs
+	delcache.pl [-f] [-q] [-i] URLs
+-q: quiet
+-i: case insensitive
+-f: force deletion if netscape's lock file exists
 
 Example:
 	$ ./delcache.pl http://localhost/ http://127.0.0.1
 
+Remove index entries without a matching cache file:
+
+	delcache.pl -clean
 
 nscache
 -------

@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.18 1997/11/28 18:42:23 eserte Exp $
+# $Id: Cache.pm,v 1.19 1998/02/05 18:45:20 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -56,6 +56,12 @@ cache, memory cache and global history.
 
 There is also an interface for using tied hashes.
 
+Netscape uses the old Berkeley DB format (version 1.85) for its cache
+index C<index.db>. Version 2.x.x is incompatible with the old format
+(L<db_intro(3)>), so you have either to downgrade or to convert the
+database using B<db_dump185> and B<db_load>. See L</convert_185_2xx>
+for a (experimental) converter function.
+
 =cut
 
 package Netscape::Cache;
@@ -86,7 +92,7 @@ if ($^O =~ /^((ms)?(win|dos)|os2)/i) {
 }
 
 $Debug = 1;
-$VERSION = '0.41';
+$VERSION = '0.42';
 
 =head1 CONSTRUCTOR
 
@@ -107,8 +113,9 @@ sub new ($;%) {
     my($pkg, %a) = @_;
     my($try, $indexfile);
     my $cachedir = $a{-cachedir} || get_cache_dir() || $Default_Cache_Dir;
-    if ($a{-index}) {
-	$indexfile = "$cachedir/$a{-index}";
+    if ($a{'-index'}) {
+	$indexfile = 
+	  ($a{'-index'} =~ m|^/| ? $a{'-index'} : "$cachedir/$a{'-index'}");
     } else {
 	foreach $try (@Default_Cache_Index) {	#try all the names
 	    $indexfile = "$cachedir/$try";
@@ -118,7 +125,12 @@ sub new ($;%) {
     if (-f $indexfile) {
 	my %cache;
 	my $self = {};
-	tie %cache, 'DB_File', $indexfile;
+	if (!tie %cache, 'DB_File', $indexfile) {
+	    warn
+	      "Can't tie <$indexfile>. Maybe you are using version 2.x.x\n",
+	      "of the Berkeley DB library?\n";
+	    return undef;
+	}
 	$self->{CACHE}     = \%cache;
 	$self->{CACHEDIR}  = $cachedir;
 	$self->{INDEXFILE} = $indexfile;	
@@ -394,6 +406,48 @@ sub get_cache_dir {
 	$cache_dir =~ s|^~/|$Home/|;
     }
     $cache_dir;
+}
+
+=head2 convert_185_2xx
+
+    $newindex = Netscape::Cache::convert_185_2xx($origindex [, $tmploc])
+
+This is a (experimental) utility for converting C<index.db> to the new
+Berkeley DB 2.x.x format. Note that this function will not overwrite
+the original C<index.db>, but rather copy the converted index to
+C<$tmploc> or C</tmp/index.$$.db>, if C<$tmploc> is not given.
+B<convert_185_2xx> returns the filename of the new created index file.
+The converted index is only temporary, and all write access is
+useless.
+
+Usage example:
+
+    my $newindex = Netscape::Cache::convert_185_2xx($indexfile);
+    my $o = new Netscape::Cache -index => $newindex;
+
+=cut
+
+sub convert_185_2xx {
+    my($indexfile, $tmploc) = @_;
+    my $success = 0;
+    die "usage: convert_185_2xx(indexfile [,tmploc])"
+      unless defined $indexfile;
+    $tmploc = "/tmp/index.$$.db"
+      unless defined $tmploc;
+    my $tmpdump = "/tmp/dump";
+    system("db_dump185 $indexfile > $tmpdump");
+    if ($?) { warn $!;
+	      goto CLEANUP }
+    chmod 0600, $tmpdump;
+    system("db_load $tmploc < $tmpdump");
+    if ($?) { warn $!;
+	      unlink $tmploc;
+	      goto CLEANUP }
+    chmod 0600, $tmploc;
+    $success++;
+  CLEANUP:
+    unlink $tmpdump;
+    $success ? $tmploc : undef;
 }
 
 package Netscape::Cache::Object;
