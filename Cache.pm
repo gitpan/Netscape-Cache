@@ -42,6 +42,10 @@ Netscape web browser. You can access the cached URLs offline via Netscape
 if you set C<Options-E<gt>Network Preferences-E<gt>Verify Document>
 to C<Never>.
 
+Note: You can also use Netscape's undocumented pseudo-URLs C<about:cache>,
+C<about:memory-cache> and C<about:global-history> to access your cache,
+memory cache and history.
+
 =cut
 
 package Netscape::Cache;
@@ -52,7 +56,7 @@ use vars qw($DEFAULT_CACHE_DIR $DEFAULT_CACHE_INDEX $DEBUG $VERSION);
 $DEFAULT_CACHE_DIR   = "$ENV{HOME}/.netscape/cache";
 $DEFAULT_CACHE_INDEX = "index.db";
 $DEBUG = 2;
-$VERSION = '0.2';
+$VERSION = '0.21';
 
 =head1 CONSTRUCTOR
 
@@ -71,6 +75,7 @@ sub new {
     my($pkg, %a) = @_;
     my $cachedir = $a{-cachedir} || get_cache_dir() || $DEFAULT_CACHE_DIR;
     my $indexfile = "$cachedir/$DEFAULT_CACHE_INDEX";
+    $indexfile =~ s|^~/|$ENV{'HOME'}/|;
     if (-f $indexfile) {
 	my(%cache, $self);
 	tie %cache, 'DB_File', $indexfile;
@@ -433,6 +438,23 @@ too.
 	  ",size: ", $_->{'CACHEFILE_SIZE'}, "\n";
     }
     print "</ul>\n";
+
+=head1 ENVIRONMENT
+
+The Netscape::Cache module examines the following environment variables:
+
+=over 4
+
+=item HOME
+
+Home directory of the user, used to find Netscape's preferences
+($HOME/.netscape).
+
+=back
+
+=head1 BUGS
+
+There are still some unknown fields (_XXX_FLAG_{1,2,3}).
 
 =head1 SEE ALSO
 

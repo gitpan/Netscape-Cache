@@ -14,16 +14,18 @@
 #
 
 use Netscape::Cache;
+use Config;
+use strict;
 
-$cache = new Netscape::Cache;
-
+my $cache = new Netscape::Cache;
+my($o, @url);
 while ($o = $cache->next_object) {
     push(@url, $o);
 }
 # sort by name
 @url = sort {$a->{'URL'} cmp $b->{'URL'}} @url;
 
-$pager = $Convfig{pager} || more;
+my $pager = $Config{'pager'} || 'more';
 open(OUT, "|$pager");
 foreach (@url) {
     print OUT $_->{'URL'}, " ", scalar localtime $_->{'LAST_VISITED'}, "\n";

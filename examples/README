@@ -1,0 +1,42 @@
+This is an example for a small frame based offline reader. If you have
+CGI::Request from CGI-modules-2.74.tar.gz, you can sort URLs by name,
+date, type and size and restrict display of URLs to images, text or html.
+
+INSTALLATION
+
+nscache is meant to be run as a cgi script. Therefore, you need a httpd
+running on your system. To make the script a cgi script you have
+following options:
+
+* Copy nscache to a public cgi directory. Make sure the path pointing to
+  nscache in cache.html is correct.
+
+* Append a ".cgi" to nscache. This works for Apache.
+
+* Use the suEXEC feature of Apache 1.2 (see
+.../htdocs/manual/suexec.html of your Apache documentation).
+
+Since ~/.netscape/cache is usually read-only, you have to run the script as a
+setuid program, unless you use the suEXEC feature. So, you have to do a
+"chmod u+s nscache.cgi". If you don't have to run the script as a setuid
+program, you have to replace the #!/usr/local/bin/suidperl line in
+nscache with #!/usr/local/bin/perl (or what else your path to perl is).
+
+WARNING
+
+Running nscache as a cgi script implies that everybody with access to
+your httpd may run this script and use your cache information. If you
+are on a stand-alone system, you won't bother, but otherwise you
+should add .htaccess protection.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.

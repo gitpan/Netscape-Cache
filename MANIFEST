@@ -3,3 +3,8 @@ Changes
 MANIFEST
 Makefile.PL
 test.pl
+examples/README
+examples/blank-page
+examples/cache-control.html
+examples/cache.html
+examples/nscache

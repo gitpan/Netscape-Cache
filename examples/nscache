@@ -1,0 +1,87 @@
+#!/usr/local/bin/suidperl
+#!/usr/local/bin/perl
+# -*- perl -*-
+
+#
+# $Id: nscache.cgi,v 1.2 1997/02/18 10:57:13 eserte Exp eserte $
+# Author: Slaven Rezic
+#
+# Copyright © 1997 Slaven Rezic. All rights reserved.
+# This package is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+#
+# Mail: <URL:mailto:eserte@cs.tu-berlin.de>
+# WWW:  <URL:http://www.cs.tu-berlin.de/~eserte/>
+#
+
+use Netscape::Cache;
+use strict;
+
+$| = 1;
+
+
+print "Content-type: text/html\n\n";
+print "<head><title>Cache</title><base target=o></head><body bgcolor=\"#ffffff\">";
+print qq{<font size="-1" face="helvetica">\n};
+
+# fix $HOME since this script might be run under the uid of the web server
+$ENV{HOME} = (getpwuid($>))[7];
+
+my $cache = new Netscape::Cache;
+my @links;
+if ($ENV{QUERY_STRING}) {
+    eval { require CGI::Request };
+    if ($@) {
+	print "You need CGI-modules-2.74 or higher to perform this action\n";
+	exit 0;
+    }
+    my $req = new CGI::Request;
+    my($o);
+    my $type = $req->param('type');
+    if ($type) {
+	while($o = $cache->next_object()) {
+	    push(@links, $o) if $o->{'MIME_TYPE'} =~ /$type/o;
+	}
+    } else {
+	while($o = $cache->next_object()) {
+	    push(@links, $o);
+	}
+    }
+
+    my $sort = $req->param('sort');
+    if ($sort eq 'type') {
+	@links = sort {$a->{'MIME_TYPE'} cmp $b->{'MIME_TYPE'}} @links;
+    } elsif ($sort eq 'size') {
+	@links
+	  = sort {$a->{'CACHEFILE_SIZE'} <=> $b->{'CACHEFILE_SIZE'}} @links;
+    } elsif ($sort eq 'date') {
+	@links = sort {$b->{'LAST_VISITED'} <=> $a->{'LAST_VISITED'}} @links;
+    } else {
+	@links = sort {$a->{'URL'} cmp $b->{'URL'}} @links;
+    }
+
+    foreach (@links) {
+	print "<a href=\"", $_->{'URL'}, "\">", $_->{'URL'}, "</a><br>\n";
+    }
+
+} else {
+    my($url);
+    while($url = $cache->next_url()) {
+	push(@links, $url);
+    }
+ 
+    @links = sort @links;
+
+    foreach (@links) {
+	print "<a href=\"$_\">$_</a><br>\n";
+    }
+}
+
+print "</font></body>\n";
+
+# automatisches chmod u+s:
+
+### Local Variables:
+### after-save-hook: (lambda () (call-process "chmod" nil 0 nil "ugo+rx,u+s" (buffer-file-name)))
+### vc-checkin-hook: (lambda () (call-process "chmod" nil 0 nil "ugo+rx,u+s" (buffer-file-name)))
+### End:
