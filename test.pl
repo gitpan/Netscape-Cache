@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: $
+# $Id: test.pl,v 1.1 1997/03/15 15:37:36 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright © 1997 Slaven Rezic. All rights reserved.

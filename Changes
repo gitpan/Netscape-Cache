@@ -1,5 +1,16 @@
 Revision history for Perl extension Netscape::Cache.
 
-0.1  Tue Feb 18 05:48:17 1997
+0.22
+	- some bug fixes
+	- slightly improved documentation
+	- nscache: option "Cache direct" added
+
+0.21
+	- some examples
+	- bug fixes
+
+0.1
 	- original version
 
+Thanks to:
+	Fernando Santagata <lac0658@iperbole.bologna.it>

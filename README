@@ -1,0 +1,20 @@
+Netscape::Cache Module
+
+Netscape::Cache provides access to the information stored in index.db of
+Netscape's cache directory.
+
+This module is inspired by Netscape::History by Neil Bowers and
+Richard Taylor.
+
+To install, type
+
+	$ perl Makefile.PL
+	$ make install
+
+You may also want to test the module with
+
+	$ make test
+
+Example programs are included in the POD and in test.pl.
+
+Send bug reports and comments to: Slaven Rezic <eserte@cs.tu-berlin.de>.

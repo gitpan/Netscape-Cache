@@ -1,3 +1,13 @@
+grepcache.pl
+------------
+Command line tool for searching URLs with perl regular expresions. Returns
+the cache file names of matching URLs.
+
+Usage:
+	grepcache.pl URL
+
+nscache
+-------
 This is an example for a small frame based offline reader. If you have
 CGI::Request from CGI-modules-2.74.tar.gz, you can sort URLs by name,
 date, type and size and restrict display of URLs to images, text or html.
@@ -28,6 +38,8 @@ Running nscache as a cgi script implies that everybody with access to
 your httpd may run this script and use your cache information. If you
 are on a stand-alone system, you won't bother, but otherwise you
 should add .htaccess protection.
+
+----------------------------------------------------------------------
 
 THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE

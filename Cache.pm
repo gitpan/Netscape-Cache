@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.3 1997/03/04 11:54:45 eserte Exp eserte $
+# $Id: Cache.pm,v 1.4 1997/03/15 15:37:22 eserte Exp eserte $
 # Author: Slaven Rezic
 #
 # Copyright © 1997 Slaven Rezic. All rights reserved.
@@ -56,7 +56,7 @@ use vars qw($DEFAULT_CACHE_DIR $DEFAULT_CACHE_INDEX $DEBUG $VERSION);
 $DEFAULT_CACHE_DIR   = "$ENV{HOME}/.netscape/cache";
 $DEFAULT_CACHE_INDEX = "index.db";
 $DEBUG = 2;
-$VERSION = '0.21';
+$VERSION = '0.22';
 
 =head1 CONSTRUCTOR
 
@@ -97,20 +97,20 @@ The C<Netscape::Cache> class implements the following methods:
 
 =item *
 
-L<rewind> - reset cache index to first URL
+B<rewind> - reset cache index to first URL
 
 =item *
 
-L<next_url> - get next URL from cache index
+B<next_url> - get next URL from cache index
 
 =item *
 
-L<next_object> - get next URL as a full L<Netscape::Cache::Object> description
+B<next_object> - get next URL as a full B<Netscape::Cache::Object> description
 from cache index
 
 =item *
 
-L<get_object> - get the L<Netscape::Cache::Object> description for a given URL
+B<get_object> - get the B<Netscape::Cache::Object> description for a given URL
 
 =back
 
@@ -121,10 +121,10 @@ Each of the methods is described separately below.
     $url = $history->next_url;
 
 This method returns the next URL from the cache index. Unlike
-L<Netscape::History>, this method returns a string and not an
+B<Netscape::History>, this method returns a string and not an
 URI::URL-like object.
 
-This method is faster than L<next_object>, since it does only evaluate the
+This method is faster than B<next_object>, since it does only evaluate the
 URL of the cached file.
 
 =cut
@@ -145,7 +145,7 @@ sub next_url {
     $cache->next_object;
 
 This method returns the next URL from the cache index as a
-L<Netscape::Cache::Object> object. See below for accessing the components
+B<Netscape::Cache::Object> object. See below for accessing the components
 (cache filename, content length, mime type and more) of this object.
 
 =cut
@@ -165,8 +165,8 @@ sub next_object {
 
     $cache->get_object;
 
-This method returns the L<Netscape::Cache::Object> object for a given URL.
-If the URL does not live in the cache index, then the returned will be
+This method returns the B<Netscape::Cache::Object> object for a given URL.
+If the URL does not live in the cache index, then the returned value will be
 undefined.
 
 =cut
@@ -184,13 +184,20 @@ sub get_object {
 
 Deletes URL from cache index and the related file from the cache.
 
+B<WARNING:> Don't use B<delete_object> while in a B<next_object> loop!
+It is better to collect all objects for delete in a list and do the
+deletion after the loop, otherwise you can get strange behaviour (e.g.
+malloc panics).
+
 =cut
 
 sub delete_object {
     my($self, $url) = @_;
-    if (unlink $self->{'CACHEDIR'} . "/" . $url->{'CACHEFILE'}) {
-	delete $self->{'CACHE'}->{$url->{'_KEY'}};
+    my $f = $self->{'CACHEDIR'} . "/" . $url->{'CACHEFILE'};
+    if (-e $f) {
+	return undef if !unlink $f;
     }
+    delete $self->{'CACHE'}->{$url->{'_KEY'}};
 }
 
 =head2 rewind
@@ -318,21 +325,26 @@ sub new {
 
     $self->{'_KEY'} = $key;
 
-    my($rest, $len, $expire_date);
+    my($rest, $len, $last_modified, $expire_date);
     ($self->{'_XXX_FLAG_1'},
-     $self->{'LAST_MODIFIED'},
+     $last_modified, 
      $self->{'LAST_VISITED'},
      $expire_date,
      $self->{'CACHEFILE_SIZE'},
      $self->{'_XXX_FLAG_2'}) = unpack("l6", substr($value, 4));
     ($self->{'CACHEFILE'}, $rest) = split(/\000/, substr($value, 33), 2);
     $self->{'_XXX_FLAG_3'} = unpack("l", substr($rest, 4, 4));
+    $self->{'_XXX_FLAG_4'} = unpack("l", substr($rest, 25, 4));
+    $self->{'LAST_MODIFIED'} = $last_modified if $last_modified != 0;
     $self->{'EXPIRE_DATE'} = $expire_date if $expire_date != 0;
     
     if ($DEBUG) {
-	$self->_report(1, $key, $value)
+	$self->_report(1, $key, $value, 
+		       "<".substr($rest, 0, 4)."><".substr($rest, 8, 17)
+		       ."><".substr($rest, 29, 4).">")
 	  if substr($rest, 0, 4) =~ /[^\000]/ ||
-	    substr($rest, 8, 33-8) =~ /[^\000]/;
+	    substr($rest, 8, 17) =~ /[^\000]/ ||
+	      substr($rest, 29, 4) =~ /[^\000]/;
     }
     
     $len = unpack("l", substr($rest, 33, 4));
@@ -368,6 +380,8 @@ sub new {
 	  if $self->{'_XXX_FLAG_2'} != 0 && $self->{'_XXX_FLAG_2'} != 1;
 	$self->_report(5, $key, $value)
 	  if $self->{'_XXX_FLAG_3'} != 1;
+	$self->_report(6, $key, $value)
+	  if $self->{'_XXX_FLAG_4'} != 0 && $self->{'_XXX_FLAG_4'} != 1;
     }
 
     $self;
@@ -383,7 +397,7 @@ sub url {
 }
 
 sub _report {
-    my($self, $errno, $key, $value) = @_;
+    my($self, $errno, $key, $value, $addinfo) = @_;
     if ($self->{'_ERROR'} && $DEBUG < 2) {
 	warn "Error number $errno\n";
     } else {
@@ -393,7 +407,9 @@ sub _report {
 	      . join("", map { sprintf "%2x", ord $_ } split(//, $key))
 		. ">\nEncoded Properties: <"
 		  . join("", map { sprintf "%2x", ord $_ } split(//, $value))
-		    . ">\n\n";
+		    . ">\n"
+		      . ($addinfo ? "Additional Info: <$addinfo>\n" : "")
+			. "\n";
     }	
     $self->{'_ERROR'}++;
 }
@@ -456,6 +472,8 @@ Home directory of the user, used to find Netscape's preferences
 
 There are still some unknown fields (_XXX_FLAG_{1,2,3}).
 
+You can't use B<delete_object> while looping with B<next_object>.
+
 =head1 SEE ALSO
 
 L<Netscape::History>
@@ -464,7 +482,7 @@ L<Netscape::History>
 
 Slaven Rezic <eserte@cs.tu-berlin.de>
 
-=head1  COPYRIGHT
+=head1 COPYRIGHT
 
 Copyright (c) 1997 Slaven Rezic. All rights reserved.
 This module is free software; you can redistribute it and/or modify

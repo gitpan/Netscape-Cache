@@ -1,6 +1,7 @@
 #!/usr/local/bin/suidperl
+# This is -*- perl -*-
 #!/usr/local/bin/perl
-# -*- perl -*-
+
 
 #
 # $Id: nscache.cgi,v 1.2 1997/02/18 10:57:13 eserte Exp eserte $
@@ -60,8 +61,15 @@ if ($ENV{QUERY_STRING}) {
 	@links = sort {$a->{'URL'} cmp $b->{'URL'}} @links;
     }
 
+    my $mycache = ($req->param('mycache') eq 'on');
+
     foreach (@links) {
-	print "<a href=\"", $_->{'URL'}, "\">", $_->{'URL'}, "</a><br>\n";
+	print
+	  "<a href=\"",
+	  ($mycache 
+	   ? "file://$cache->{'CACHEDIR'}$_->{'CACHEFILE'}"
+	   : $_->{'URL'}),
+	     "\">", $_->{'URL'}, "</a><br>\n";
     }
 
 } else {
