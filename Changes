@@ -1,7 +1,8 @@
 Revision history for Perl extension Netscape::Cache.
 
-1.00
-	- use fields, hence it works only with perl5.005 (not released)
+0.45
+	- minor bug fixes
+	- skip tests if no cache db available
 
 0.44
 	- cosmetic fixes

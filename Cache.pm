@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.21.1.3 1999/06/05 00:53:54 eserte Exp $
+# $Id: Cache.pm,v 1.21.1.4 2002/09/30 17:34:49 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -99,7 +99,7 @@ if ($^O =~ /^((ms)?(win|dos)|os2)/i) {
 }
 
 $Debug = 0;
-$VERSION = '0.44';
+$VERSION = '0.45';
 
 =head1 CONSTRUCTOR
 
@@ -121,7 +121,7 @@ sub new ($;%) {
     my($try, $indexfile);
     my $cachedir = $a{-cachedir} || get_cache_dir() || $Default_Cache_Dir;
     if ($a{'-index'}) {
-	$indexfile = 
+	$indexfile =
 	  ($a{'-index'} =~ m|^/| ? $a{'-index'} : "$cachedir/$a{'-index'}");
     } else {
 	foreach $try (@Default_Cache_Index) {	#try all the names
@@ -140,7 +140,7 @@ sub new ($;%) {
 	}
 	$self->{CACHE}     = \%cache;
 	$self->{CACHEDIR}  = $cachedir;
-	$self->{INDEXFILE} = $indexfile;
+	$self->{CACHEFILE} = $indexfile;
 	bless $self, $pkg;
     } else {
 	warn "No cache db found. Try to set the cache direcetory with\n" .
@@ -278,7 +278,7 @@ malloc panics).
 
 sub delete_object ($$) {
     my($self, $url) = @_;
-    my $f = $self->{CACHEDIR} . "/" . $url->{CACHEFILE};
+    my $f = $self->{CACHEDIR} . "/" . $self->{CACHEFILE};
     if (-e $f) {
 	return undef if !unlink $f;
     }
@@ -286,7 +286,9 @@ sub delete_object ($$) {
 }
 
 sub DELETE ($$) {
-    shift->delete_object(@_);
+    my($self, $url) = @_;
+    my $key = Netscape::Cache::Object::_make_key_from_url($url);
+    delete $self->{CACHE}{$key};
 }
 
 =head2 rewind
