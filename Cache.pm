@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.4 1997/03/15 15:37:22 eserte Exp eserte $
+# $Id: Cache.pm,v 1.8 1997/04/13 18:19:26 eserte Exp eserte $
 # Author: Slaven Rezic
 #
 # Copyright © 1997 Slaven Rezic. All rights reserved.
@@ -19,6 +19,8 @@ Netscape::Cache - object class for accessing Netscape cache files
 
 =head1 SYNOPSIS
 
+The object oriented interace:
+
     use Netscape::Cache;
 
     $cache = new Netscape::Cache;
@@ -34,6 +36,15 @@ Netscape::Cache - object class for accessing Netscape cache files
 	  $o->{'MIME_TYPE'}, "\n";
     }
 
+The TIEHASH interface:
+
+    use Netscape::Cache;
+
+    tie %cache, 'Netscape::Cache';
+    foreach (sort keys %cache) { 
+	print $cache{$_}->{URL}, "\n";
+    }
+
 =head1 DESCRIPTION
 
 The C<Netscape::Cache> module implements an object class for
@@ -42,21 +53,35 @@ Netscape web browser. You can access the cached URLs offline via Netscape
 if you set C<Options-E<gt>Network Preferences-E<gt>Verify Document>
 to C<Never>.
 
-Note: You can also use Netscape's undocumented pseudo-URLs C<about:cache>,
+Note: You can also use the undocumented pseudo-URLs C<about:cache>,
 C<about:memory-cache> and C<about:global-history> to access your cache,
 memory cache and history.
+
+There is also an interface for using tied hashes.
 
 =cut
 
 package Netscape::Cache;
-use DB_File;
 use strict;
-use vars qw($DEFAULT_CACHE_DIR $DEFAULT_CACHE_INDEX $DEBUG $VERSION);
+use vars qw($Default_Preferences $Default_Cache_Dir $Default_Cache_Index
+	    $Debug $Home $OS_Type $VERSION);
 
-$DEFAULT_CACHE_DIR   = "$ENV{HOME}/.netscape/cache";
-$DEFAULT_CACHE_INDEX = "index.db";
-$DEBUG = 2;
-$VERSION = '0.22';
+use DB_File;
+
+if ($^O =~ /^(ms)?(win|dos)/) { # XXX check this one
+    $Default_Preferences = 'C:\NETSCAPE\NETSCAPE.INI';
+    $Default_Cache_Dir   = 'C:\NETSCAPE\CACHE';
+    $Default_Cache_Index = 'FAT.DB';
+    $OS_Type = 'win';
+} else {
+    $Home = $ENV{'HOME'} || (getpwuid($>))[7];
+    $Default_Preferences = "$Home/.netscape/preferences";
+    $Default_Cache_Dir   = "$Home/.netscape/cache";
+    $Default_Cache_Index = "index.db";
+    $OS_Type = 'unix';
+}
+$Debug = 1;
+$VERSION = '0.30';
 
 =head1 CONSTRUCTOR
 
@@ -71,22 +96,26 @@ will be generated, and the constructor will return C<undef>.
 
 =cut
 
-sub new {
+sub new ($;%) {
     my($pkg, %a) = @_;
-    my $cachedir = $a{-cachedir} || get_cache_dir() || $DEFAULT_CACHE_DIR;
-    my $indexfile = "$cachedir/$DEFAULT_CACHE_INDEX";
-    $indexfile =~ s|^~/|$ENV{'HOME'}/|;
+    my $cachedir = $a{-cachedir} || get_cache_dir() || $Default_Cache_Dir;
+    my $indexfile = "$cachedir/$Default_Cache_Index"; # XXX \ for Windows???
     if (-f $indexfile) {
-	my(%cache, $self);
+	my %cache;
+	my $self = {};
 	tie %cache, 'DB_File', $indexfile;
-	$self->{'CACHE'} = \%cache;
-	$self->{'CACHEDIR'} = $cachedir;
-	$self->{'INDEXFILE'} = $indexfile;	
+	$self->{CACHE}     = \%cache;
+	$self->{CACHEDIR}  = $cachedir;
+	$self->{INDEXFILE} = $indexfile;	
 	bless $self, $pkg;
     } else {
 	warn "No cache db found!\n";
         undef;
     }
+}
+
+sub TIEHASH ($;@) {
+    shift->new(@_);
 }
 
 =head1 METHODS
@@ -129,11 +158,11 @@ URL of the cached file.
 
 =cut
 
-sub next_url {
+sub next_url ($) {
     my $self = shift;
     my $url;
     do {
-	my $key = each %{ $self->{'CACHE'} };
+	my $key = each %{ $self->{CACHE} };
 	return undef if !defined $key;
 	$url = Netscape::Cache::Object::url($key);
     } while !$url;
@@ -150,15 +179,28 @@ B<Netscape::Cache::Object> object. See below for accessing the components
 
 =cut
 
-sub next_object {
+sub next_object ($) {
     my $self = shift;
     my $o;
     do {
-	my($key, $value) = each %{ $self->{'CACHE'} };
+	my($key, $value) = each %{ $self->{CACHE} };
 	return undef if !defined $key;
 	$o = Netscape::Cache::Object->new($key, $value);
     } while !defined $o;
     $o;
+}
+
+sub FIRSTKEY ($) {
+    my $self = shift;
+    $self->rewind;
+    my $o = $self->next_object;
+    defined $o ? $o->{URL} : undef;
+}
+
+sub NEXTKEY ($) {
+    my $self = shift;
+    my $o = $self->next_object;
+    defined $o ? $o->{URL} : undef;
 }
 
 =head2 get_object
@@ -171,64 +213,102 @@ undefined.
 
 =cut
 
-sub get_object {
+sub get_object ($$) {
     my($self, $url) = @_;
     my $key = Netscape::Cache::Object::_make_key_from_url($url);
-#      pack("l", length($url)+13) . pack("l", length($url)+1)
-#	. $url . ("\000" x 5);
-    my $value = $self->{'CACHE'}->{$key};
+    my $value = $self->{CACHE}{$key};
     $value ? new Netscape::Cache::Object($key, $value) : undef;
+}
+
+sub FETCH ($$) {
+    shift->get_object(@_);
+}
+
+sub EXISTS ($$) {
+    my($self, $url) = @_;
+    my $key = Netscape::Cache::Object::_make_key_from_url($url);
+    exists $self->{CACHE}{$key};
 }
 
 =head2 delete_object
 
 Deletes URL from cache index and the related file from the cache.
 
-B<WARNING:> Don't use B<delete_object> while in a B<next_object> loop!
+B<WARNING:> Do not use B<delete_object> while in a B<next_object> loop!
 It is better to collect all objects for delete in a list and do the
 deletion after the loop, otherwise you can get strange behaviour (e.g.
 malloc panics).
 
 =cut
 
-sub delete_object {
+sub delete_object ($$) {
     my($self, $url) = @_;
-    my $f = $self->{'CACHEDIR'} . "/" . $url->{'CACHEFILE'};
+    my $f = $self->{CACHEDIR} . "/" . $url->{CACHEFILE};
     if (-e $f) {
 	return undef if !unlink $f;
     }
-    delete $self->{'CACHE'}->{$url->{'_KEY'}};
+    delete $self->{CACHE}{$url->{_KEY}};
+}
+
+sub DELETE ($$) {
+    shift->delete_object(@_);
 }
 
 =head2 rewind
 
     $cache->rewind();
 
-This method is used to move the cache index's internal pointer
-to the first URL in the cache index.
-You don't need to bother with this if you have just created the object,
-but it doesn't harm anything if you do.
+This method is used to move the internal pointer of the cache index to
+the first URL in the cache index. You don't need to bother with this
+if you have just created the object, but it doesn't harm anything if
+you do.
 
 =cut
 
-sub rewind {
+sub rewind ($) {
     my $self = shift;
-    reset %{ $self->{'CACHE'} };
+    reset %{ $self->{CACHE} };
 }
 
-sub DESTROY {
+sub CLEAR {
+    die "CLEARs are not permitted";
+}
+
+sub STORE {
+    die "STOREs are not permitted";
+}
+
+sub DESTROY ($) {
     my $self = shift;
-    untie %{ $self->{'CACHE'} };
+    untie %{ $self->{CACHE} };
 }
 
 # internal subroutine to get the cache directory from Netscape's preferences
 sub get_cache_dir {
     my $cache_dir;
-    if (open(PREFS, "$ENV{'HOME'}/.netscape/preferences")) {
-	while(<PREFS>) {
-	    if (/^CACHE_DIR:\s*(.*)$/) {
-		$cache_dir = $1;
-		last;
+    if (open(PREFS, $Default_Preferences)) {
+	if ($OS_Type eq 'unix') {
+	    while(<PREFS>) {
+		if (/^CACHE_DIR:\s*(.*)$/) {
+		    $cache_dir = $1;
+		    last;
+		}
+	    }
+	    $cache_dir =~ s|^~/|$Home/|;
+	} elsif ($OS_Type eq 'win') {
+	    my $cache_section_found;
+	    while(<PREFS>) { # read .ini file
+		if ($cache_section_found) {
+		    if (/^cache dir=(.*)$/i) {
+			($cache_dir = $1) =~ s/\r//g; # strip ^M
+			last;
+		    } elsif (/^\[/) { # new section found
+			undef $cache_section_found;
+			redo; # maybe the new section is a cache section too?
+		    }
+		} elsif (/^\[Cache\]/i) { # cache section found
+		    $cache_section_found++;
+		}
 	    }
 	}
 	close PREFS;
@@ -238,9 +318,9 @@ sub get_cache_dir {
 
 package Netscape::Cache::Object;
 use strict;
-use vars qw($DEBUG);
+use vars qw($Debug);
 
-$DEBUG = $Netscape::Cache::DEBUG;
+$Debug = $Netscape::Cache::Debug;
 
 =head1 Netscape::Cache::Object
 
@@ -311,63 +391,63 @@ The charset of the URL (eg. iso-8859-1).
 
 =cut
 
-sub new {
+sub new ($$;$) {
     my($pkg, $key, $value) = @_;
 
-    return undef if $value eq '';
+    return undef if !defined $value || $value eq '';
 
     my $url = url($key);
     return undef if !$url;
 
     my $self = {};
     bless $self, $pkg;
-    $self->{'URL'} = $url;
+    $self->{URL} = $url;
 
-    $self->{'_KEY'} = $key;
+    $self->{_KEY} = $key;
 
     my($rest, $len, $last_modified, $expire_date);
-    ($self->{'_XXX_FLAG_1'},
+    ($self->{_XXX_FLAG_1},
      $last_modified, 
-     $self->{'LAST_VISITED'},
+     $self->{LAST_VISITED},
      $expire_date,
-     $self->{'CACHEFILE_SIZE'},
-     $self->{'_XXX_FLAG_2'}) = unpack("l6", substr($value, 4));
-    ($self->{'CACHEFILE'}, $rest) = split(/\000/, substr($value, 33), 2);
-    $self->{'_XXX_FLAG_3'} = unpack("l", substr($rest, 4, 4));
-    $self->{'_XXX_FLAG_4'} = unpack("l", substr($rest, 25, 4));
-    $self->{'LAST_MODIFIED'} = $last_modified if $last_modified != 0;
-    $self->{'EXPIRE_DATE'} = $expire_date if $expire_date != 0;
+     $self->{CACHEFILE_SIZE},
+     $self->{_XXX_FLAG_2})      = unpack("l6", substr($value, 4));
+    ($self->{CACHEFILE}, $rest) = split(/\000/, substr($value, 33), 2);
+    $self->{_XXX_FLAG_3}        = unpack("l", substr($rest, 4, 4));
+    $self->{_XXX_FLAG_4}        = unpack("l", substr($rest, 25, 4));
+    $self->{LAST_MODIFIED}      = $last_modified if $last_modified != 0;
+    $self->{EXPIRE_DATE}        = $expire_date if $expire_date != 0;
     
-    if ($DEBUG) {
+    if ($Debug) {
 	$self->_report(1, $key, $value, 
 		       "<".substr($rest, 0, 4)."><".substr($rest, 8, 17)
 		       ."><".substr($rest, 29, 4).">")
-	  if substr($rest, 0, 4) =~ /[^\000]/ ||
-	    substr($rest, 8, 17) =~ /[^\000]/ ||
-	      substr($rest, 29, 4) =~ /[^\000]/;
+	  if   substr($rest, 0, 4)  =~ /[^\000]/
+	    || substr($rest, 8, 17) =~ /[^\000]/
+	    || substr($rest, 29, 4) =~ /[^\000]/;
     }
     
     $len = unpack("l", substr($rest, 33, 4));
     if ($len) {
-	$self->{'MIME_TYPE'} = substr($rest, 37, $len-1);
+	$self->{MIME_TYPE} = substr($rest, 37, $len-1);
     }
     $rest = substr($rest, 37 + $len);
     
     $len = unpack("l", substr($rest, 0, 4));
     if ($len) {
-	$self->{'ENCODING'} = substr($rest, 4, $len-1);
+	$self->{ENCODING} = substr($rest, 4, $len-1);
     }
     $rest = substr($rest, 4 + $len);
     
     $len = unpack("l", substr($rest, 0, 4));
     if ($len) {
-	$self->{'CHARSET'} = substr($rest, 4, $len-1);
+	$self->{CHARSET} = substr($rest, 4, $len-1);
     }
     $rest = substr($rest, 4 + $len);
     
-    $self->{'CONTENT_LENGTH'} = unpack("l", substr($rest, 1, 4));
+    $self->{CONTENT_LENGTH} = unpack("l", substr($rest, 1, 4));
     
-    if ($DEBUG) {
+    if ($Debug) {
 	$self->_report(2, $key, $value)
 	  if substr($rest, 5) =~ /[^\000]/;
 	
@@ -375,19 +455,19 @@ sub new {
 	warn "Invalid length for value of <$key>\n"
 	  if $record_length != length($value);
 	$self->_report(3, $key, $value)
-	  if $self->{'_XXX_FLAG_1'} != 3;
+	  if $self->{_XXX_FLAG_1} != 3;
 	$self->_report(4, $key, $value)
-	  if $self->{'_XXX_FLAG_2'} != 0 && $self->{'_XXX_FLAG_2'} != 1;
+	  if $self->{_XXX_FLAG_2} != 0 && $self->{_XXX_FLAG_2} != 1;
 	$self->_report(5, $key, $value)
-	  if $self->{'_XXX_FLAG_3'} != 1;
+	  if $self->{_XXX_FLAG_3} != 1;
 	$self->_report(6, $key, $value)
-	  if $self->{'_XXX_FLAG_4'} != 0 && $self->{'_XXX_FLAG_4'} != 1;
+	  if $self->{_XXX_FLAG_4} != 0 && $self->{_XXX_FLAG_4} != 1;
     }
 
     $self;
 }
 
-sub url {
+sub url ($) {
     my $key = shift;
     my $keylen2 = unpack("l", substr($key, 4, 4));
     my $keylen1 = unpack("l", substr($key, 0, 4));
@@ -398,12 +478,12 @@ sub url {
 
 sub _report {
     my($self, $errno, $key, $value, $addinfo) = @_;
-    if ($self->{'_ERROR'} && $DEBUG < 2) {
+    if ($self->{_ERROR} && $Debug < 2) {
 	warn "Error number $errno\n";
     } else {
 	warn
 	  "Please report:\nError number $errno\nURL: "
-	    . $self->{'URL'} . "\nEncoded URL: <"
+	    . $self->{URL} . "\nEncoded URL: <"
 	      . join("", map { sprintf "%2x", ord $_ } split(//, $key))
 		. ">\nEncoded Properties: <"
 		  . join("", map { sprintf "%2x", ord $_ } split(//, $value))
@@ -411,10 +491,10 @@ sub _report {
 		      . ($addinfo ? "Additional Info: <$addinfo>\n" : "")
 			. "\n";
     }	
-    $self->{'_ERROR'}++;
+    $self->{_ERROR}++;
 }
 
-sub _make_key_from_url {
+sub _make_key_from_url ($) {
     my $url = shift;
     pack("l", length($url)+13) . pack("l", length($url)+1)
       . $url . ("\000" x 5);
@@ -446,8 +526,7 @@ too.
     foreach (@url) {
         print
           "<li><a href=\"file:",
-          $cache->{'CACHEDIR'},
-	  "/", $_->{'CACHEFILE'}, "\">",
+          $cache->{'CACHEDIR'}, "/", $_->{'CACHEFILE'}, "\">",
           $_->{'URL'}, "</a> ",
 	  scalar localtime $_->{'LAST_VISITED'}, "<br>",
           "type: ", $_->{'MIME_TYPE'}, 
@@ -464,7 +543,8 @@ The Netscape::Cache module examines the following environment variables:
 =item HOME
 
 Home directory of the user, used to find Netscape's preferences
-($HOME/.netscape).
+($HOME/.netscape). Otherwise, if not set, retrieve the home directory
+from the passwd file.
 
 =back
 
@@ -472,7 +552,12 @@ Home directory of the user, used to find Netscape's preferences
 
 There are still some unknown fields (_XXX_FLAG_{1,2,3}).
 
-You can't use B<delete_object> while looping with B<next_object>.
+You can't use B<delete_object> while looping with B<next_object>. See the
+question "What happens if I add or remove keys from a hash while iterating
+over it?" in L<perlfaq4>.
+
+B<keys()> or B<each()> on the tied hash are slower than the object
+oriented equivalents B<next_object> or B<next_url>.
 
 =head1 SEE ALSO
 

@@ -1,5 +1,11 @@
 Revision history for Perl extension Netscape::Cache.
 
+0.30
+	- TIEHASH interface
+	- support for Windows Netscape (not tested)
+	- changed some global variable names (they weren't documented anyway)
+	- some bug fixes
+
 0.22
 	- some bug fixes
 	- slightly improved documentation
