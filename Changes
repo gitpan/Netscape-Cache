@@ -1,5 +1,10 @@
 Revision history for Perl extension Netscape::Cache.
 
+0.46
+	- test fix for older Test.pm
+	- moved test file to t/* directory
+	- added missing PREREQ_PM
+
 0.45
 	- minor bug fixes
 	- skip tests if no cache db available

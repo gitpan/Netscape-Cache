@@ -3,7 +3,7 @@ Changes
 MANIFEST
 Makefile.PL
 README
-test.pl
+t/netscape-cache.t
 examples/README
 examples/blank-page
 examples/cache-control.html

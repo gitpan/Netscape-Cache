@@ -2,14 +2,14 @@
 # -*- perl -*-
 
 #
-# $Id: test.pl,v 1.7 2002/09/30 17:34:12 eserte Exp $
+# $Id: test.pl,v 1.9 2003/10/22 21:34:45 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 2000, 2002 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: slaven.rezic@berlin.de
+# Mail: slaven@rezic.de
 # WWW:  http://user.cs.tu-berlin.de/~eserte/
 #
 
@@ -51,7 +51,7 @@ start test.pl manually with
 This will not help if your berkeley db version is 2.x.x. If so,
 read the documentation for workarounds.
 EOF
-    skip(1) for (2..3);
+    skip(1,1) for (2..3);
     exit;
 }
 

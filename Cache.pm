@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Cache.pm,v 1.21.1.4 2002/09/30 17:34:49 eserte Exp $
+# $Id: Cache.pm,v 1.21.1.7 2007/11/05 20:51:06 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997 Slaven Rezic. All rights reserved.
@@ -57,11 +57,11 @@ cache, memory cache and global history.
 There is also an interface for using tied hashes.
 
 Netscape uses the old Berkeley DB format (version 1.85) for its cache
-index C<index.db>. Version 2.x.x is incompatible with the old format
-(L<db_intro(3)>), so you have either to downgrade or to convert the
-database using B<db_dump185> and B<db_load>. See
-L<convert_185_2xx|/convert_185_2xx> for a (experimental) converter
-function.
+index C<index.db>. Versions 2 and newer of Berkeley DB are
+incompatible with the old format (L<db_intro(3)>), so you have either
+to downgrade or to convert the database using B<db_dump185> and
+B<db_load>. See L<convert_185_2xx|/convert_185_2xx> for a
+(experimental) converter function.
 
 =cut
 
@@ -99,7 +99,7 @@ if ($^O =~ /^((ms)?(win|dos)|os2)/i) {
 }
 
 $Debug = 0;
-$VERSION = '0.45';
+$VERSION = '0.46';
 
 =head1 CONSTRUCTOR
 
@@ -412,7 +412,7 @@ sub get_cache_dir {
 	    }
 	}
     }
-    if ($OS_Type eq 'unix') {
+    if ($OS_Type eq 'unix' && defined $cache_dir) {
 	$cache_dir =~ s|^~/|$Home/|;
     }
     $cache_dir;
